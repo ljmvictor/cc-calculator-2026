@@ -96,6 +96,777 @@
             border: 1px solid rgba(39, 39, 42, 0.8);
         }
 
+        .tab-btn { position: relative; }
+        .tab-btn::after {
+            content: ''; position: absolute; bottom: -1px; left: 0; width: 100%; height: 2px;
+            background: #3b82f6; transform: scaleX(0); transition: transform 0.3s ease;
+        }
+        .tab-btn.active::after { transform: scaleX(1); }
+        .tab-btn.active { color: #f4f4f5; font-weight: 600; }
+    </style>
+</head>
+<body class="h-screen w-full overflow-hidden flex font-sans antialiased selection:bg-app-accent selection:text-white relative">
+
+    <!-- 1. PASSCODE LOCK SCREEN -->
+    <div id="lock-screen" class="absolute inset-0 z-50 flex items-center justify-center bg-app-bg backdrop-blur-xl transition-opacity duration-500">
+        <div class="glass-panel p-10 rounded-2xl max-w-sm w-full text-center shadow-[0_0_50px_rgba(0,0,0,0.5)]">
+            <i class="ph ph-lock-key text-4xl text-app-accent mb-4"></i>
+            <h2 class="text-2xl font-bold mb-2 tracking-tight">System Locked</h2>
+            <p class="text-app-muted text-xs mb-8">Authorized personnel only.</p>
+            
+            <div class="relative mb-6">
+                <input type="password" id="passcode" class="w-full bg-app-bg/50 border border-app-border rounded-xl px-4 py-3 text-center focus:outline-none focus:border-app-accent focus:ring-1 focus:ring-app-accent text-lg tracking-[0.3em] transition-all" placeholder="••••••••">
+            </div>
+            
+            <button onclick="checkPassword()" class="w-full bg-app-accent hover:bg-blue-600 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-[0_0_15px_rgba(59,130,246,0.3)] hover:shadow-[0_0_25px_rgba(59,130,246,0.5)]">
+                Access Dashboard
+            </button>
+            <p id="error-msg" class="text-red-400 text-xs mt-4 opacity-0 transition-opacity">Authentication failed.</p>
+        </div>
+    </div>
+
+    <!-- 2. LEFT SIDEBAR (CONTROLS) -->
+    <aside class="w-[340px] h-full border-r border-app-border bg-app-panel flex flex-col flex-shrink-0 z-10 shadow-2xl">
+        <!-- Logo Area -->
+        <div class="p-6 border-b border-app-border flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <i class="ph-fill ph-credit-card text-white text-lg"></i>
+            </div>
+            <div>
+                <h1 class="font-bold tracking-tight text-lg leading-tight">Optimizer Pro</h1>
+                <p class="text-[10px] text-app-muted uppercase tracking-widest font-medium">Model 2026</p>
+            </div>
+        </div>
+
+        <!-- Scrollable Inputs -->
+        <div class="flex-1 overflow-y-auto p-6 space-y-8">
+            
+            <!-- Global Strategy Dropdown -->
+            <div class="space-y-3">
+                <label class="flex items-center gap-2 text-xs font-bold text-app-muted uppercase tracking-wider">
+                    <i class="ph ph-target"></i> Base RM Conversion Goal
+                </label>
+                <div class="relative">
+                    <select id="global-reward-select" onchange="updateDashboard()" class="w-full appearance-none bg-app-bg border border-app-border text-sm rounded-xl px-4 py-3 pr-10 focus:outline-none focus:border-app-accent focus:ring-1 focus:ring-app-accent cursor-pointer transition-colors hover:border-app-borderHover font-medium text-app-text">
+                        <option value="Cashback Priority">Pure Cashback (RM)</option>
+                        <option value="Enrich (MH)">Miles: Enrich (MH)</option>
+                        <option value="KrisFlyer (SQ)">Miles: KrisFlyer (SQ)</option>
+                        <option value="Cathay (Asia Miles)">Miles: Cathay Pacific</option>
+                        <option value="AirAsia BIG">Points: AirAsia BIG</option>
+                    </select>
+                    <i class="ph ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-app-muted pointer-events-none"></i>
+                </div>
+            </div>
+
+            <!-- Points vs Cashback Focus -->
+            <div class="space-y-3">
+                <label class="flex items-center gap-2 text-xs font-bold text-app-muted uppercase tracking-wider">
+                    <i class="ph ph-funnel"></i> Card Type Filter
+                </label>
+                <div class="flex p-1 bg-app-bg rounded-xl border border-app-border" id="card-type-group">
+                    <button class="flex-1 py-2 text-sm font-medium rounded-lg transition-all text-white bg-app-border shadow-sm active-toggle" data-val="points" onclick="setCardType('points', this)">Points / Miles</button>
+                    <button class="flex-1 py-2 text-sm font-medium rounded-lg transition-all text-app-muted hover:text-white" data-val="cashback" onclick="setCardType('cashback', this)">Cashback</button>
+                </div>
+            </div>
+
+            <!-- Travel Spend Type -->
+            <div class="space-y-3">
+                <label class="flex items-center gap-2 text-xs font-bold text-app-muted uppercase tracking-wider">
+                    <i class="ph ph-globe-hemisphere-west"></i> Travel Spend Region
+                </label>
+                <div class="flex p-1 bg-app-bg rounded-xl border border-app-border" id="travel-type-group">
+                    <button class="flex-1 py-2 text-sm font-medium rounded-lg transition-all text-white bg-app-border shadow-sm active-toggle" data-val="Overseas" onclick="setTravelType('Overseas', this)">Overseas</button>
+                    <button class="flex-1 py-2 text-sm font-medium rounded-lg transition-all text-app-muted hover:text-white" data-val="Domestic" onclick="setTravelType('Domestic', this)">Domestic</button>
+                </div>
+            </div>
+
+            <hr class="border-app-border">
+
+            <!-- Bank Filters -->
+            <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                    <label class="flex items-center gap-2 text-xs font-bold text-app-muted uppercase tracking-wider">
+                        <i class="ph ph-bank"></i> Bank Filters
+                    </label>
+                    <button onclick="toggleAllBanks()" id="btn-toggle-banks" class="text-[10px] font-bold text-app-accent hover:text-white transition-colors">Deselect All</button>
+                </div>
+                <div class="grid grid-cols-2 gap-3" id="bank-filters">
+                    <label class="flex items-center gap-2 cursor-pointer group"><input type="checkbox" checked value="UOB" onchange="updateDashboard()" class="w-4 h-4 accent-app-accent bg-app-bg border-app-border rounded cursor-pointer"><span class="text-sm font-medium text-app-muted group-hover:text-white transition-colors">UOB</span></label>
+                    <label class="flex items-center gap-2 cursor-pointer group"><input type="checkbox" checked value="CIMB" onchange="updateDashboard()" class="w-4 h-4 accent-app-accent bg-app-bg border-app-border rounded cursor-pointer"><span class="text-sm font-medium text-app-muted group-hover:text-white transition-colors">CIMB</span></label>
+                    <label class="flex items-center gap-2 cursor-pointer group"><input type="checkbox" checked value="HSBC" onchange="updateDashboard()" class="w-4 h-4 accent-app-accent bg-app-bg border-app-border rounded cursor-pointer"><span class="text-sm font-medium text-app-muted group-hover:text-white transition-colors">HSBC</span></label>
+                    <label class="flex items-center gap-2 cursor-pointer group"><input type="checkbox" checked value="SC" onchange="updateDashboard()" class="w-4 h-4 accent-app-accent bg-app-bg border-app-border rounded cursor-pointer"><span class="text-sm font-medium text-app-muted group-hover:text-white transition-colors">SC</span></label>
+                    <label class="flex items-center gap-2 cursor-pointer group col-span-2"><input type="checkbox" checked value="RHB" onchange="updateDashboard()" class="w-4 h-4 accent-app-accent bg-app-bg border-app-border rounded cursor-pointer"><span class="text-sm font-medium text-app-muted group-hover:text-white transition-colors">RHB</span></label>
+                </div>
+            </div>
+
+            <hr class="border-app-border">
+
+            <!-- Essential Sliders -->
+            <div class="space-y-5">
+                <h3 class="text-[11px] font-bold text-app-muted uppercase tracking-wider flex items-center gap-2">
+                    <i class="ph ph-shopping-bag"></i> Monthly Essentials
+                </h3>
+                
+                <div class="group">
+                    <div class="flex justify-between items-end mb-2">
+                        <label class="text-sm font-medium group-hover:text-app-accent transition-colors">Petrol</label>
+                        <span class="font-mono text-xs text-app-muted bg-app-bg px-2 py-1 rounded border border-app-border" id="val-petrol">RM 250</span>
+                    </div>
+                    <input type="range" id="sl-petrol" min="0" max="1500" step="10" value="250" oninput="updateDashboard()">
+                </div>
+                
+                <div class="group">
+                    <div class="flex justify-between items-end mb-2">
+                        <label class="text-sm font-medium group-hover:text-app-accent transition-colors">Dining</label>
+                        <span class="font-mono text-xs text-app-muted bg-app-bg px-2 py-1 rounded border border-app-border" id="val-dining">RM 800</span>
+                    </div>
+                    <input type="range" id="sl-dining" min="0" max="3000" step="50" value="800" oninput="updateDashboard()">
+                </div>
+                
+                <div class="group">
+                    <div class="flex justify-between items-end mb-2">
+                        <label class="text-sm font-medium group-hover:text-app-accent transition-colors">Groceries</label>
+                        <span class="font-mono text-xs text-app-muted bg-app-bg px-2 py-1 rounded border border-app-border" id="val-grocery">RM 600</span>
+                    </div>
+                    <input type="range" id="sl-grocery" min="0" max="3000" step="50" value="600" oninput="updateDashboard()">
+                </div>
+            </div>
+
+            <hr class="border-app-border">
+
+            <!-- Digital & Other Sliders -->
+            <div class="space-y-5">
+                <h3 class="text-[11px] font-bold text-app-muted uppercase tracking-wider flex items-center gap-2">
+                    <i class="ph ph-device-mobile"></i> Digital & Retail
+                </h3>
+                
+                <div class="group">
+                    <div class="flex justify-between items-end mb-2">
+                        <label class="text-sm font-medium group-hover:text-app-accent transition-colors">E-Wallet Reload</label>
+                        <span class="font-mono text-xs text-app-muted bg-app-bg px-2 py-1 rounded border border-app-border" id="val-ewallet">RM 200</span>
+                    </div>
+                    <input type="range" id="sl-ewallet" min="0" max="1500" step="10" value="200" oninput="updateDashboard()">
+                </div>
+
+                <div class="group">
+                    <div class="flex justify-between items-end mb-2">
+                        <label class="text-sm font-medium group-hover:text-app-accent transition-colors">Online & Subs</label>
+                        <span class="font-mono text-xs text-app-muted bg-app-bg px-2 py-1 rounded border border-app-border" id="val-online">RM 200</span>
+                    </div>
+                    <input type="range" id="sl-online" min="0" max="2000" step="25" value="200" oninput="updateDashboard()">
+                </div>
+
+                <div class="group">
+                    <div class="flex justify-between items-end mb-2">
+                        <label class="text-sm font-medium group-hover:text-app-accent transition-colors">Entertainment</label>
+                        <span class="font-mono text-xs text-app-muted bg-app-bg px-2 py-1 rounded border border-app-border" id="val-ent">RM 400</span>
+                    </div>
+                    <input type="range" id="sl-ent" min="0" max="1500" step="50" value="400" oninput="updateDashboard()">
+                </div>
+
+                <div class="group">
+                    <div class="flex justify-between items-end mb-2">
+                        <label class="text-sm font-medium group-hover:text-app-accent transition-colors">Other Retail</label>
+                        <span class="font-mono text-xs text-app-muted bg-app-bg px-2 py-1 rounded border border-app-border" id="val-other">RM 300</span>
+                    </div>
+                    <input type="range" id="sl-other" min="0" max="3000" step="50" value="300" oninput="updateDashboard()">
+                </div>
+            </div>
+
+            <hr class="border-app-border">
+
+            <!-- Travel Sliders -->
+            <div class="space-y-5 pb-8">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-[11px] font-bold text-app-accent uppercase tracking-wider flex items-center gap-2">
+                        <i class="ph ph-airplane-tilt"></i> Travel & Holidays
+                    </h3>
+                </div>
+
+                <!-- Explanation Note -->
+                <div class="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 shadow-inner">
+                    <p class="text-[11px] text-blue-300 leading-relaxed font-medium">
+                        <i class="ph-fill ph-lightbulb text-blue-400"></i> <strong>How to use this:</strong> <br>
+                        <span class="text-app-muted font-normal mt-1 block">Put your normal monthly travel (local hotels, buses) in <em>Regular</em>. Put big, once-a-year trips (overseas flights) in <em>Peak</em> to ensure monthly cashback caps calculate perfectly.</span>
+                    </p>
+                </div>
+                
+                <div class="group">
+                    <div class="flex justify-between items-end mb-2">
+                        <div>
+                            <label class="text-sm font-medium group-hover:text-app-accent transition-colors block">Regular Travel</label>
+                            <span class="text-[10px] text-app-muted">Monthly Average</span>
+                        </div>
+                        <span class="font-mono text-xs text-app-accent bg-app-accent/10 px-2 py-1 rounded border border-app-accent/20" id="val-travel-mo">RM 0</span>
+                    </div>
+                    <input type="range" id="sl-travel-mo" min="0" max="3000" step="50" value="0" oninput="updateDashboard()">
+                </div>
+
+                <div class="group">
+                    <div class="flex justify-between items-end mb-2">
+                        <div>
+                            <label class="text-sm font-medium group-hover:text-app-accent transition-colors block">Peak Holiday</label>
+                            <span class="text-[10px] text-app-muted">Annual Occurrence</span>
+                        </div>
+                        <span class="font-mono text-xs text-amber-400 bg-amber-400/10 px-2 py-1 rounded border border-amber-400/20" id="val-travel-yr">RM 4800</span>
+                    </div>
+                    <input type="range" id="sl-travel-yr" min="0" max="30000" step="100" value="4800" oninput="updateDashboard()">
+                </div>
+            </div>
+
+        </div>
+    </aside>
+
+    <!-- 3. RIGHT MAIN AREA (RESULTS) -->
+    <main class="flex-1 h-full overflow-y-auto bg-app-bg relative">
+        
+        <!-- Header Strip -->
+        <header class="sticky top-0 z-30 glass-panel border-x-0 border-t-0 px-8 py-4 flex justify-between items-center">
+            <div>
+                <h2 class="text-lg font-bold tracking-tight text-white flex items-center gap-2" id="header-strategy-title">
+                    Strategy Analysis
+                </h2>
+                <p class="text-xs text-app-muted flex items-center gap-1" id="header-subtitle">
+                    <i class="ph ph-info"></i> Based on 11 regular months + 1 peak travel month
+                </p>
+            </div>
+            <div class="flex items-center gap-6 text-right">
+                <div class="flex p-1 bg-app-panel rounded-lg border border-app-border" id="value-mode-group">
+                    <button class="px-3 py-1.5 text-xs font-bold rounded-md transition-all text-white bg-app-border shadow-sm" data-val="net" onclick="setValueMode('net', this)">Net Value</button>
+                    <button class="px-3 py-1.5 text-xs font-bold rounded-md transition-all text-app-muted hover:text-white" data-val="gross" onclick="setValueMode('gross', this)">Gross Value</button>
+                </div>
+                <div class="border-l border-app-border pl-6">
+                    <p class="text-[10px] text-app-muted uppercase tracking-widest font-bold">Annual Spend</p>
+                    <p class="text-lg font-mono font-bold text-white" id="metric-annual-spend">RM 0</p>
+                </div>
+            </div>
+        </header>
+
+        <div class="p-8 max-w-[1400px] mx-auto space-y-8">
+            
+            <!-- Hero Summary Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="top-metrics">
+                <!-- Injected via JS -->
+            </div>
+
+            <!-- Main Data Area -->
+            <div class="glass-panel rounded-2xl overflow-hidden flex flex-col shadow-xl">
+                
+                <!-- Tabs -->
+                <div class="flex px-6 border-b border-app-border bg-app-panel/50">
+                    <button class="tab-btn active py-4 px-4 text-sm text-app-muted hover:text-white transition-colors" onclick="switchTab('table', this)">
+                        <div class="flex items-center gap-2"><i class="ph ph-table"></i> Category Matrix</div>
+                    </button>
+                    <button class="tab-btn py-4 px-4 text-sm text-app-muted hover:text-white transition-colors" onclick="switchTab('chart', this)">
+                        <div class="flex items-center gap-2"><i class="ph ph-chart-bar"></i> Value Comparison</div>
+                    </button>
+                </div>
+
+                <!-- Tab Content: Table -->
+                <div id="view-table" class="block w-full overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead id="dynamic-thead">
+                            <!-- Injected via JS based on Points vs Cashback Mode -->
+                        </thead>
+                        <tbody id="table-body" class="divide-y divide-app-border text-sm">
+                            <!-- Injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Tab Content: Chart -->
+                <div id="view-chart" class="hidden p-6">
+                    <div class="w-full h-[400px] relative">
+                        <canvas id="barChart"></canvas>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+    <!-- 4. CORE JAVASCRIPT LOGIC -->
+    <script>
+        // --- 1. Password & Stealth Logic ---
+        function checkPassword() {
+            const input = document.getElementById('passcode').value;
+            if(input === 'admin2026') {
+                const lock = document.getElementById('lock-screen');
+                lock.style.opacity = '0';
+                setTimeout(() => { lock.style.display = 'none'; }, 500);
+                updateDashboard(); // Initial calculation
+            } else {
+                const err = document.getElementById('error-msg');
+                err.style.opacity = '1';
+                setTimeout(() => { err.style.opacity = '0'; }, 3000);
+            }
+        }
+        document.getElementById('passcode').addEventListener('keypress', e => { if(e.key === 'Enter') checkPassword(); });
+
+        // --- 2. State & Variables ---
+        let state = {
+            cardTypeFilter: 'points', // 'points' or 'cashback'
+            travelType: 'Overseas',
+            valueMode: 'net', // 'net' or 'gross'
+            sortConfig: { key: 'value', direction: 'desc' }
+        };
+
+        const REWARD_VAL = {
+            'Cashback Priority': 0.02,
+            'Enrich (MH)': 0.05, 
+            'KrisFlyer (SQ)': 0.07, 
+            'Cathay (Asia Miles)': 0.06,
+            'AirAsia BIG': 0.015
+        };
+
+        let chartInstance = null;
+
+        // --- 3. UI Interaction Handlers ---
+        function setCardType(val, btn) {
+            state.cardTypeFilter = val;
+            const btns = document.getElementById('card-type-group').children;
+            for(let b of btns) b.className = 'flex-1 py-2 text-sm font-medium rounded-lg transition-all text-app-muted hover:text-white';
+            btn.className = 'flex-1 py-2 text-sm font-medium rounded-lg transition-all text-white bg-app-border shadow-sm active-toggle';
+            
+            // Reset sort when switching modes
+            state.sortConfig = { key: 'value', direction: 'desc' };
+            updateDashboard();
+        }
+
+        function setTravelType(val, btn) {
+            state.travelType = val;
+            const btns = document.getElementById('travel-type-group').children;
+            for(let b of btns) b.className = 'flex-1 py-2 text-sm font-medium rounded-lg transition-all text-app-muted hover:text-white';
+            btn.className = 'flex-1 py-2 text-sm font-medium rounded-lg transition-all text-white bg-app-border shadow-sm active-toggle';
+            updateDashboard();
+        }
+
+        function toggleAllBanks() {
+            const checkboxes = document.querySelectorAll('#bank-filters input[type="checkbox"]');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            checkboxes.forEach(cb => cb.checked = !allChecked);
+            document.getElementById('btn-toggle-banks').innerText = allChecked ? 'Select All' : 'Deselect All';
+            updateDashboard();
+        }
+
+        function setValueMode(mode, btn) {
+            state.valueMode = mode;
+            const btns = btn.parentElement.children;
+            for(let b of btns) b.className = 'px-3 py-1.5 text-xs font-bold rounded-md transition-all text-app-muted hover:text-white';
+            btn.className = 'px-3 py-1.5 text-xs font-bold rounded-md transition-all text-white bg-app-border shadow-sm';
+            updateDashboard();
+        }
+
+        function handleSort(key) {
+            if (state.sortConfig.key === key) {
+                state.sortConfig.direction = state.sortConfig.direction === 'desc' ? 'asc' : 'desc';
+            } else {
+                state.sortConfig.key = key;
+                state.sortConfig.direction = 'desc';
+            }
+            updateDashboard();
+        }
+
+        function switchTab(viewId, btn) {
+            document.getElementById('view-table').classList.add('hidden');
+            document.getElementById('view-table').classList.remove('block');
+            document.getElementById('view-chart').classList.add('hidden');
+            document.getElementById('view-chart').classList.remove('block');
+            
+            document.getElementById('view-' + viewId).classList.add('block');
+            document.getElementById('view-' + viewId).classList.remove('hidden');
+
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+
+        const fm = (num) => num.toLocaleString('en-MY', {minimumFractionDigits: 0, maximumFractionDigits: 0});
+        const fmDec = (num) => num.toLocaleString('en-MY', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+        // --- 4. The Unified Calculation Engine ---
+        function updateDashboard() {
+            const rewardGoal = document.getElementById('global-reward-select').value;
+            const isPointsMode = state.cardTypeFilter === 'points';
+            const mV = REWARD_VAL[rewardGoal];
+            
+            // Read active banks
+            const checkboxes = document.querySelectorAll('#bank-filters input[type="checkbox"]');
+            const activeBanks = Array.from(checkboxes).filter(cb => cb.checked).map(cb => cb.value);
+
+            // Read spend inputs
+            const s = {
+                petrol: parseInt(document.getElementById('sl-petrol').value),
+                dining: parseInt(document.getElementById('sl-dining').value),
+                grocery: parseInt(document.getElementById('sl-grocery').value),
+                ent: parseInt(document.getElementById('sl-ent').value),
+                ewallet: parseInt(document.getElementById('sl-ewallet').value),
+                travel_mo: parseInt(document.getElementById('sl-travel-mo').value),
+                travel_yr: parseInt(document.getElementById('sl-travel-yr').value),
+                online: parseInt(document.getElementById('sl-online').value),
+                other: parseInt(document.getElementById('sl-other').value)
+            };
+
+            // Update UI Input Labels
+            Object.keys(s).forEach(key => {
+                document.getElementById('val-' + key.replace('_', '-')).innerText = 'RM ' + fm(s[key]);
+            });
+
+            const reg_mo_spend = s.petrol + s.dining + s.grocery + s.ent + s.ewallet + s.travel_mo + s.online + s.other;
+            const peak_mo_spend = reg_mo_spend + s.travel_yr;
+            const annual_spend = (reg_mo_spend * 11) + peak_mo_spend;
+            const avg_mo_spend = annual_spend / 12;
+
+            document.getElementById('metric-annual-spend').innerText = 'RM ' + fm(annual_spend);
+            document.getElementById('header-strategy-title').innerHTML = `<i class="ph ph-trend-up text-app-accent"></i> ${rewardGoal} Evaluation`;
+
+            // Setup Card Defs
+            let allCards = [
+                // POINTS CARDS
+                { id: 'uob_vi_metal', name: 'UOB VI Metal', type: 'points', color: '#60a5fa', fee: 3000, remark: '300k UNIRM Bonus', ptsDiv: 12 },
+                { id: 'uob_vi', name: 'UOB Visa Infinite', type: 'points', color: '#3b82f6', fee: annual_spend >= 50000 ? 0 : 600, remark: '12X Lounge', ptsDiv: 12 },
+                { id: 'uob_pme', name: 'UOB PRVI Elite', type: 'points', color: '#0ea5e9', fee: annual_spend >= 50000 ? 0 : 600, remark: '8X Lounge', bonus: annual_spend >= 50000 ? 0 : 60000, ptsDiv: 12 },
+                { id: 'uob_prvi', name: 'UOB PRVI Miles', type: 'points', color: '#06b6d4', fee: annual_spend >= 20000 ? 0 : 198, remark: '50% Grab', ptsDiv: 12 },
+                { id: 'hsbc_vs', name: 'HSBC Visa Signature', type: 'points', color: '#fb7185', fee: annual_spend >= 30000 ? 0 : 600, remark: '8X Overseas/Online', ptsDiv: rewardGoal==='Enrich (MH)'?24:rewardGoal==='KrisFlyer (SQ)'?30:25 },
+                { id: 'hsbc_travel', name: 'HSBC TravelOne', type: 'points', color: '#f43f5e', fee: annual_spend >= 20000 ? 0 : 300, remark: '6X Lounge', ptsDiv: rewardGoal==='Enrich (MH)'?24:rewardGoal==='KrisFlyer (SQ)'?30:25 },
+                { id: 'sc_journey', name: 'SC Journey', type: 'points', color: '#8b5cf6', fee: annual_spend >= 60000 ? 0 : 600, remark: 'Unl. Lounge', ptsDiv: 2 },
+                { id: 'cimb_twe', name: 'CIMB Travel World Elite', type: 'points', color: '#991b1b', fee: annual_spend >= 250000 ? 0 : 1200, remark: '10X Overseas', ptsDiv: rewardGoal==='Enrich (MH)'?12.5:rewardGoal==='KrisFlyer (SQ)'?15:15 },
+                { id: 'cimb_tp', name: 'CIMB Travel Plat', type: 'points', color: '#ef4444', fee: 0, remark: 'Free for life', ptsDiv: rewardGoal==='Enrich (MH)'?12.5:rewardGoal==='KrisFlyer (SQ)'?15:15 },
+                { id: 'cimb_tw', name: 'CIMB Travel World', type: 'points', color: '#dc2626', fee: annual_spend >= 100000 ? 0 : 555, remark: '12X Lounge', ptsDiv: rewardGoal==='Enrich (MH)'?12.5:rewardGoal==='KrisFlyer (SQ)'?15:15 },
+                { id: 'cimb_vi', name: 'CIMB Visa Infinite', type: 'points', color: '#b91c1c', fee: 0, remark: '8X Lounge', ptsDiv: rewardGoal==='Enrich (MH)'?12.5:rewardGoal==='KrisFlyer (SQ)'?15:15 },
+                { id: 'cimb_e', name: 'CIMB e Card', type: 'points', color: '#ec4899', fee: annual_spend >= 6000 ? 0 : 80, remark: '10X eDay', ptsDiv: rewardGoal==='Enrich (MH)'?12.5:rewardGoal==='KrisFlyer (SQ)'?15:15 },
+                
+                // CASHBACK CARDS
+                { id: 'uob_one_plat', name: 'UOB ONE Plat', type: 'cashback', color: '#f59e0b', fee: annual_spend >= 20000 ? 0 : 195, remark: 'Max RM15/cat' },
+                { id: 'uob_one_cls', name: 'UOB ONE Classic', type: 'cashback', color: '#fbbf24', fee: annual_spend >= 15000 ? 0 : 120, remark: 'Max RM10/cat' },
+                { id: 'uob_evol', name: 'UOB EVOL', type: 'cashback', color: '#fcd34d', fee: annual_spend >= 12000 ? 0 : 120, remark: '8% E-wallet/Online' },
+                { id: 'cimb_cr', name: 'CIMB Cash Rebate', type: 'cashback', color: '#f87171', fee: 0, remark: 'Cap RM30/mo' },
+                { id: 'cimb_pet', name: 'CIMB PETRONAS', type: 'cashback', color: '#10b981', fee: 0, remark: 'Cap RM30 Setel' },
+                { id: 'sc_simply', name: 'SC Simply Cash', type: 'cashback', color: '#a78bfa', fee: 250, remark: 'Up to 15% Cap RM60' },
+                { id: 'rhb_world', name: 'RHB World', type: 'cashback', color: '#84cc16', fee: 0, remark: 'Up to 6% Tiered' }
+            ];
+
+            // Filter active cards by UI selections
+            let cards = allCards.filter(c => c.type === state.cardTypeFilter && activeBanks.some(b => c.name.includes(b)));
+
+            // Calculation function per month to guarantee strict 1NF monthly output
+            const calcMonth = (c, travel_sp) => {
+                let mo_t = s.petrol + s.dining + s.grocery + s.ent + s.ewallet + travel_sp + s.online + s.other;
+                let o_sp = s.ent + s.ewallet + s.online + s.other; // grouping for visual "other"
+
+                if (c.type === 'points') {
+                    let p=0, d=0, g=0, t=0, o=0;
+                    if(c.id === 'uob_vi_metal' || c.id === 'uob_vi') {
+                        p=s.petrol; d=s.dining*(s.dining>=1000?5:1); g=s.grocery; t=travel_sp*(state.travelType==='Overseas'?10:1); o=o_sp;
+                    } else if(c.id === 'uob_pme') {
+                        p=s.petrol; d=s.dining; g=s.grocery; t=travel_sp*(state.travelType==='Overseas'?12:5); o=o_sp;
+                    } else if(c.id === 'uob_prvi') {
+                        p=s.petrol; d=s.dining; g=s.grocery; t=(Math.min(travel_sp,5000)*5)+Math.max(0,travel_sp-5000); o=o_sp;
+                    } else if(c.id === 'hsbc_travel') {
+                        p=0; d=s.dining*5; g=s.grocery; t=travel_sp*(state.travelType==='Overseas'?8:5); o=s.ent+s.online+s.other;
+                    } else if(c.id === 'hsbc_vs') {
+                        p=0; d=s.dining*5; g=s.grocery; t=travel_sp*(state.travelType==='Overseas'?8:1); o=s.online*(state.travelType==='Overseas'?8:5)+s.ent+s.other;
+                    } else if(c.id === 'sc_journey') {
+                        p=0; d=s.dining; g=s.grocery*0.2; t=travel_sp*(state.travelType==='Overseas'?1:0.2); o=o_sp*0.2;
+                    } else if(c.id === 'cimb_tp') {
+                        p=s.petrol; d=s.dining*2; g=s.grocery*2; t=travel_sp*(state.travelType==='Overseas'?5:2); o=(s.ent+s.online+s.other)*2+s.ewallet;
+                    } else if(c.id === 'cimb_tw') {
+                        p=s.petrol; d=s.dining*2; g=s.grocery*2; t=travel_sp*(state.travelType==='Overseas'?8:2); o=(s.ent+s.online+s.other)*2+s.ewallet;
+                    } else if(c.id === 'cimb_twe') {
+                        p=s.petrol; d=s.dining*2; g=s.grocery*2; t=travel_sp*(state.travelType==='Overseas'?10:2); o=(s.ent+s.online+s.other)*2+s.ewallet;
+                    } else if(c.id === 'cimb_vi') {
+                        p=s.petrol; d=s.dining*5; g=s.grocery; t=travel_sp*(state.travelType==='Overseas'?5:1); o=s.online*5+s.ent+s.other+s.ewallet;
+                    } else if(c.id === 'cimb_e') {
+                        p=s.petrol; d=s.dining; g=s.grocery; t=travel_sp; o=s.ewallet*8+s.online*8+s.ent+s.other;
+                    }
+                    return { p, d, g, t, o, total: p+d+g+t+o };
+                } 
+                else if (c.type === 'cashback') {
+                    let p=0, d=0, g=0, t=0, o=0;
+                    if(c.id.includes('uob_one')) {
+                        let isPlat = c.id.includes('plat'); let cap = isPlat ? 15 : 10; let minS = isPlat ? 1500 : 800;
+                        if(mo_t >= minS) {
+                            p=Math.min(s.petrol*0.1, cap); d=Math.min(s.dining*0.1, cap); g=Math.min(s.grocery*0.1, cap);
+                            t=travel_sp*0.002; o=Math.min(s.ewallet*0.1, cap) + (s.ent+s.online+s.other)*0.002;
+                        } else {
+                            p=s.petrol*0.002; d=s.dining*0.002; g=s.grocery*0.002; t=travel_sp*0.002; o=o_sp*0.002;
+                        }
+                    } else if (c.id === 'uob_evol') {
+                        if (mo_t >= 800) {
+                            o = Math.min(s.ewallet*0.08, 15) + Math.min(s.online*0.08, 15) + (s.ent+s.other)*0.002;
+                            p = s.petrol*0.002; d = s.dining*0.002; g = s.grocery*0.002; t = travel_sp*0.002;
+                        } else {
+                            p=s.petrol*0.002; d=s.dining*0.002; g=s.grocery*0.002; t=travel_sp*0.002; o=o_sp*0.002;
+                        }
+                    } else if(c.id === 'sc_simply') {
+                        let rate = mo_t >= 2500 ? 0.15 : mo_t >= 0 ? 0.09 : 0;
+                        let pool = s.petrol + s.dining + s.grocery + s.ewallet;
+                        let cb = Math.min(pool * rate, 60);
+                        p=pool>0?cb*(s.petrol/pool):0; d=pool>0?cb*(s.dining/pool):0; g=pool>0?cb*(s.grocery/pool):0; 
+                        o=pool>0?cb*(s.ewallet/pool)+(s.ent+s.online+s.other)*0:0; t=0;
+                    } else if(c.id === 'cimb_cr') {
+                        if(mo_t >= 3000) {
+                            let pool = s.grocery + s.petrol + s.ent; let cb5 = Math.min(pool*0.05, 30);
+                            g=pool>0 ? cb5*(s.grocery/pool) : 0; p=pool>0 ? cb5*(s.petrol/pool) : 0;
+                            o=pool>0 ? cb5*(s.ent/pool) + (s.ewallet+s.online+s.other)*0.002 : o_sp*0.002;
+                            d=s.dining*0.002; t=travel_sp*0.002;
+                        } else {
+                            p=s.petrol*0.002; d=s.dining*0.002; g=s.grocery*0.002; t=travel_sp*0.002; o=o_sp*0.002;
+                        }
+                    } else if(c.id === 'cimb_pet') {
+                        if(mo_t >= 1500) { p=Math.min(s.petrol*0.07, 30); d=s.dining*0.002; g=s.grocery*0.002; t=travel_sp*0.002; o=o_sp*0.002; }
+                        else { p=s.petrol*0.002; d=s.dining*0.002; g=s.grocery*0.002; t=travel_sp*0.002; o=o_sp*0.002; }
+                    } else if(c.id === 'rhb_world') {
+                        let rate = mo_t>=3500?0.06 : mo_t>=2500?0.02 : mo_t>=1000?0.01 : 0.002;
+                        let cpool = s.dining+travel_sp+s.petrol; let ccb = Math.min(cpool*rate, 30);
+                        d=cpool>0?ccb*(s.dining/cpool):0; t=cpool>0?ccb*(travel_sp/cpool):0; p=cpool>0?ccb*(s.petrol/cpool):0;
+                        let opool = s.grocery+o_sp; let ocb = Math.min(opool*0.002, 30);
+                        g=opool>0?ocb*(s.grocery/opool):0; o=opool>0?ocb*(o_sp/opool):0;
+                    }
+                    return { p, d, g, t, o, total: p+d+g+t+o };
+                }
+            };
+
+            // Calculate Averages across 11 regular + 1 peak month
+            cards = cards.map(c => {
+                let reg = calcMonth(c, s.travel_mo);
+                let peak = calcMonth(c, s.travel_mo + s.travel_yr);
+                
+                c.m_petrol = (reg.p * 11 + peak.p) / 12;
+                c.m_dining = (reg.d * 11 + peak.d) / 12;
+                c.m_groc = (reg.g * 11 + peak.g) / 12;
+                c.m_travel = (reg.t * 11 + peak.t) / 12;
+                c.m_other = (reg.o * 11 + peak.o) / 12;
+                c.m_total = (reg.total * 11 + peak.total) / 12;
+
+                if (isPointsMode) {
+                    c.a_pts = (c.m_total * 12) + (c.bonus || 0);
+                    c.m_pts = c.a_pts / 12;
+                    c.miles_yr = c.a_pts / c.ptsDiv;
+                    c.gross = c.miles_yr * mV;
+                    c.m_eq_rm = c.gross / 12;
+                } else {
+                    c.gross = c.m_total * 12;
+                }
+                
+                c.net = c.gross - c.fee;
+                c.value = state.valueMode === 'net' ? c.net : c.gross;
+                return c;
+            });
+
+            // Sorting Logic
+            cards.sort((a, b) => {
+                let sK = state.sortConfig.key; let sD = state.sortConfig.direction === 'asc' ? 1 : -1;
+                let valA, valB;
+                if(sK === 'name') { valA = a.name.toLowerCase(); valB = b.name.toLowerCase(); }
+                else if(sK === 'fee') { valA = a.fee; valB = b.fee; }
+                else if(sK === 'value') { valA = a.value; valB = b.value; }
+                else if(sK === 'miles') { valA = a.miles_yr||0; valB = b.miles_yr||0; }
+                else if(sK === 'total') { valA = isPointsMode?a.m_pts:a.m_total; valB = isPointsMode?b.m_pts:b.m_total; }
+                else if(sK === 'eq_mo') { valA = a.m_eq_rm; valB = b.m_eq_rm; }
+                else { valA = a['m_'+sK]; valB = b['m_'+sK]; } 
+                
+                if(valA < valB) return -1 * sD;
+                if(valA > valB) return 1 * sD;
+                return 0;
+            });
+
+            // Render Table Header dynamically
+            const sortIcon = (key) => {
+                let active = state.sortConfig.key === key;
+                let dir = state.sortConfig.direction === 'asc' ? 'up' : 'down';
+                return `<i class="ph ph-caret-${dir} text-app-accent sort-icon transition-opacity ${active ? 'opacity-100' : 'opacity-0'}"></i>`;
+            };
+            const th = (title, key, align='text-right') => `<th class="px-3 py-4 ${align} cursor-pointer hover:text-white select-none" onclick="handleSort('${key}')"><div class="flex items-center ${align==='text-right'?'justify-end':''} gap-1">${title} ${sortIcon(key)}</div></th>`;
+
+            let theadHtml = `<tr class="bg-app-bg/50 border-b border-app-border text-[10px] uppercase tracking-wider text-app-muted font-bold">`;
+            theadHtml += th('Card Profile', 'name', 'text-left');
+            if (isPointsMode) {
+                theadHtml += th('Petrol<br><span class="lowercase font-normal">pts/mo</span>', 'petrol');
+                theadHtml += th('Dining<br><span class="lowercase font-normal">pts/mo</span>', 'dining');
+                theadHtml += th('Groc.<br><span class="lowercase font-normal">pts/mo</span>', 'groc');
+                theadHtml += th('Travel<br><span class="lowercase font-normal">pts/mo</span>', 'travel');
+                theadHtml += th('Other<br><span class="lowercase font-normal">pts/mo</span>', 'other');
+                theadHtml += th('<span class="text-white">Tot. Pts</span><br><span class="lowercase font-normal text-app-muted">per mo</span>', 'total');
+                theadHtml += th('Eq. RM<br><span class="lowercase font-normal">per mo</span>', 'eq_mo');
+                theadHtml += th('Miles<br><span class="lowercase font-normal">per yr</span>', 'miles');
+            } else {
+                theadHtml += th('Petrol<br><span class="lowercase font-normal">RM/mo</span>', 'petrol');
+                theadHtml += th('Dining<br><span class="lowercase font-normal">RM/mo</span>', 'dining');
+                theadHtml += th('Groc.<br><span class="lowercase font-normal">RM/mo</span>', 'groc');
+                theadHtml += th('Travel<br><span class="lowercase font-normal">RM/mo</span>', 'travel');
+                theadHtml += th('Other<br><span class="lowercase font-normal">RM/mo</span>', 'other');
+                theadHtml += th('<span class="text-white">Tot. RM</span><br><span class="lowercase font-normal text-app-muted">per mo</span>', 'total');
+            }
+            theadHtml += th('Fee', 'fee');
+            let vTitle = state.valueMode === 'net' ? 'Net Val' : 'Gross Val';
+            theadHtml += th(`<span class="text-white">${vTitle}</span><br><span class="lowercase font-normal text-app-muted">RM/yr</span>`, 'value');
+            theadHtml += `</tr>`;
+            document.getElementById('dynamic-thead').innerHTML = theadHtml;
+
+            // Render Table Body
+            let tbody = '';
+            if (cards.length === 0) {
+                tbody = `<tr><td colspan="10" class="px-6 py-12 text-center text-app-muted">No cards matched your filter. Please select banks in the sidebar.</td></tr>`;
+            } else {
+                cards.forEach(c => {
+                    let fText = c.fee === 0 ? '<span class="text-emerald-400">Free</span>' : `<span class="text-red-400 font-mono">-RM ${c.fee}</span>`;
+                    let nColor = c.value >= 0 ? 'text-white' : 'text-red-400';
+                    let badge = isPointsMode ? `<span class="bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded text-[10px] font-bold tracking-wide">MILES</span>` : `<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded text-[10px] font-bold tracking-wide">CASH</span>`;
+
+                    tbody += `<tr class="hover:bg-white/[0.02] transition-colors group">`;
+                    tbody += `<td class="px-3 py-3 align-middle"><div class="font-bold text-white">${c.name}</div><div class="flex items-center gap-2 mt-1">${badge}<span class="text-[10px] text-app-muted">${c.remark}</span></div></td>`;
+                    
+                    if (isPointsMode) {
+                        tbody += `<td class="px-3 py-3 text-right font-mono text-xs text-app-muted">${fm(c.m_petrol)}</td>`;
+                        tbody += `<td class="px-3 py-3 text-right font-mono text-xs text-app-muted">${fm(c.m_dining)}</td>`;
+                        tbody += `<td class="px-3 py-3 text-right font-mono text-xs text-app-muted">${fm(c.m_groc)}</td>`;
+                        tbody += `<td class="px-3 py-3 text-right font-mono text-xs text-app-muted">${fm(c.m_travel)}</td>`;
+                        tbody += `<td class="px-3 py-3 text-right font-mono text-xs text-app-muted">${fm(c.m_other)}</td>`;
+                        tbody += `<td class="px-3 py-3 text-right font-mono text-xs text-white">${fm(c.m_pts)}</td>`;
+                        tbody += `<td class="px-3 py-3 text-right font-mono text-xs text-emerald-400/80">${fmDec(c.m_eq_rm)}</td>`;
+                        tbody += `<td class="px-3 py-3 text-right font-mono text-xs text-app-muted">${fm(c.miles_yr)}</td>`;
+                    } else {
+                        tbody += `<td class="px-3 py-3 text-right font-mono text-xs text-app-muted">${fmDec(c.m_petrol)}</td>`;
+                        tbody += `<td class="px-3 py-3 text-right font-mono text-xs text-app-muted">${fmDec(c.m_dining)}</td>`;
+                        tbody += `<td class="px-3 py-3 text-right font-mono text-xs text-app-muted">${fmDec(c.m_groc)}</td>`;
+                        tbody += `<td class="px-3 py-3 text-right font-mono text-xs text-app-muted">${fmDec(c.m_travel)}</td>`;
+                        tbody += `<td class="px-3 py-3 text-right font-mono text-xs text-app-muted">${fmDec(c.m_other)}</td>`;
+                        tbody += `<td class="px-3 py-3 text-right font-mono text-xs text-emerald-400">${fmDec(c.m_total)}</td>`;
+                    }
+                    
+                    tbody += `<td class="px-3 py-3 text-right text-xs align-middle border-l border-app-border">${fText}</td>`;
+                    tbody += `<td class="px-3 py-3 text-right font-mono font-bold ${nColor} align-middle text-sm bg-gradient-to-r from-transparent to-white/[0.01]">${fmDec(c.value)}</td>`;
+                    tbody += `</tr>`;
+                });
+            }
+            document.getElementById('table-body').innerHTML = tbody;
+
+            // Render Hero Cards
+            const bestOverall = cards.length > 0 ? cards.reduce((prev, curr) => (prev.value > curr.value) ? prev : curr) : null;
+            const w_stat = annual_spend >= 50000 ? '<span class="text-emerald-400">Achieved ✓</span>' : `<span class="text-amber-400">Short RM ${fmDec(50000 - annual_spend)}</span>`;
+
+            document.getElementById('top-metrics').innerHTML = `
+                <div class="glass-panel p-6 rounded-2xl relative overflow-hidden flex flex-col justify-center">
+                    <div class="absolute -right-6 -top-6 w-24 h-24 bg-app-accent opacity-10 rounded-full blur-2xl"></div>
+                    <div class="text-[10px] text-app-muted uppercase tracking-widest font-bold mb-1 flex items-center gap-1">
+                        <i class="ph-fill ph-crown text-app-accent"></i> Top Recommended (${isPointsMode?'Miles':'Cashback'})
+                    </div>
+                    <div class="text-3xl font-bold tracking-tight text-white mb-1">${bestOverall ? 'RM ' + fmDec(bestOverall.value) : 'N/A'}</div>
+                    <div class="text-sm font-medium text-app-accent truncate">${bestOverall ? bestOverall.name : 'No cards selected'}</div>
+                </div>
+                <div class="glass-panel p-6 rounded-2xl relative overflow-hidden flex flex-col justify-center">
+                    <div class="text-[10px] text-app-muted uppercase tracking-widest font-bold mb-1 flex items-center gap-1">
+                        <i class="ph-fill ph-calendar-check text-emerald-400"></i> ${state.valueMode==='net'?'Net':'Gross'} Yield Ratio
+                    </div>
+                    <div class="text-3xl font-bold tracking-tight text-white mb-1">${bestOverall && annual_spend>0 ? ((bestOverall.value/annual_spend)*100).toFixed(2) + '%' : '0.00%'}</div>
+                    <div class="text-sm font-medium text-emerald-400 truncate">Effective Return on Spend</div>
+                </div>
+                <div class="glass-panel p-6 rounded-2xl border-dashed border-app-borderHover relative overflow-hidden flex flex-col justify-center">
+                    <div class="text-[10px] text-app-muted uppercase tracking-widest font-bold mb-1 flex items-center gap-1">
+                        <i class="ph-fill ph-shield-check text-amber-400"></i> Fee Waiver Check
+                    </div>
+                    <div class="text-lg font-bold text-white mb-1 leading-tight">${w_stat}</div>
+                    <div class="text-xs text-app-muted">UOB VI RM 50k annual threshold</div>
+                </div>
+            `;
+
+            // Update Chart
+            const ctx = document.getElementById('barChart').getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+            
+            Chart.defaults.color = '#a1a1aa';
+            Chart.defaults.font.family = '"Plus Jakarta Sans", sans-serif';
+
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: cards.map(c => c.name.replace('UOB ', '').replace('CIMB ', '').replace('RHB ', '')),
+                    datasets: [{
+                        label: state.valueMode==='net' ? 'Net Value (RM)' : 'Gross Value (RM)',
+                        data: cards.map(c => c.value),
+                        backgroundColor: cards.map(c => c.color),
+                        borderRadius: 6,
+                        borderSkipped: false
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: { backgroundColor: '#18181b', titleColor: '#f4f4f5', bodyColor: '#f4f4f5', borderColor: '#27272a', borderWidth: 1, padding: 12, cornerRadius: 8, callbacks: { label: (ctx) => ' RM ' + ctx.parsed.y.toFixed(0) } }
+                    },
+                    scales: {
+                        y: { grid: { color: '#27272a', tickLength: 0 }, border: { display: false }, ticks: { callback: (v) => 'RM ' + v } },
+                        x: { grid: { display: false }, border: { display: false }, ticks: { maxRotation: 45, minRotation: 45, font: {size: 11} } }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>                            text: '#f4f4f5',     // zinc-100
+                            muted: '#a1a1aa',    // zinc-400
+                            accent: '#3b82f6',   // blue-500
+                            glow: 'rgba(59, 130, 246, 0.15)'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #09090b; color: #f4f4f5; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #52525b; }
+
+        /* Custom Range Sliders */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+            height: 24px;
+            margin: 0;
+        }
+        input[type=range]:focus { outline: none; }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #27272a;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        input[type=range]:hover::-webkit-slider-runnable-track {
+            background: #3f3f46;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -6px;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+            transition: transform 0.1s;
+        }
+        input[type=range]:active::-webkit-slider-thumb {
+            transform: scale(1.2);
+        }
+
+        /* Glassmorphism Utilities */
+        .glass-panel {
+            background: rgba(24, 24, 27, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(39, 39, 42, 0.8);
+        }
+
         /* Smooth Transitions */
         .fade-enter { opacity: 0; transform: translateY(10px); }
         .fade-enter-active { opacity: 1; transform: translateY(0); transition: all 0.4s ease; }
