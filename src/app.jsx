@@ -1,0 +1,1923 @@
+import React, { useState, useMemo, useEffect } from "react";
+import { createRoot } from "react-dom/client";
+
+/* ============================================================================
+   ICONS — small inline SVGs (lucide-style paths), no external icon package
+   ========================================================================== */
+function Icon({ children, size = 16, className = "", ...rest }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...rest}>
+      {children}
+    </svg>
+  );
+}
+const Wallet = (p) => <Icon {...p}><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" /><path d="M3 5v14a2 2 0 0 0 2 2h16v-5" /><path d="M18 12a2 2 0 0 0 0 4h4v-4Z" /></Icon>;
+const SlidersHorizontal = (p) => <Icon {...p}><line x1="21" x2="14" y1="4" y2="4" /><line x1="10" x2="3" y1="4" y2="4" /><line x1="21" x2="12" y1="12" y2="12" /><line x1="8" x2="3" y1="12" y2="12" /><line x1="21" x2="16" y1="20" y2="20" /><line x1="12" x2="3" y1="20" y2="20" /><line x1="14" x2="14" y1="2" y2="6" /><line x1="8" x2="8" y1="10" y2="14" /><line x1="16" x2="16" y1="18" y2="22" /></Icon>;
+const Trophy = (p) => <Icon {...p}><path d="M8 21h8" /><path d="M12 17v4" /><path d="M7 4h10v5a5 5 0 0 1-10 0V4Z" /><path d="M17 5h2a2 2 0 0 1 0 4h-2" /><path d="M7 5H5a2 2 0 0 0 0 4h2" /></Icon>;
+const Layers = (p) => <Icon {...p}><path d="m12.83 2.18-8.58 3.9a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83l-8.58-3.9a2 2 0 0 0-1.66 0Z" /><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65" /><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65" /></Icon>;
+const Database = (p) => <Icon {...p}><ellipse cx="12" cy="5" rx="9" ry="3" /><path d="M3 5v14a9 3 0 0 0 18 0V5" /><path d="M3 12a9 3 0 0 0 18 0" /></Icon>;
+const Settings2 = (p) => <Icon {...p}><path d="M20 7h-9" /><path d="M14 17H5" /><circle cx="17" cy="17" r="3" /><circle cx="7" cy="7" r="3" /></Icon>;
+const TrendingDown = (p) => <Icon {...p}><polyline points="22 17 13.5 8.5 8.5 13.5 2 7" /><polyline points="16 17 22 17 22 11" /></Icon>;
+const AlertTriangle = (p) => <Icon {...p}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" /><line x1="12" x2="12" y1="9" y2="13" /><line x1="12" x2="12.01" y1="17" y2="17" /></Icon>;
+const ChevronDown = (p) => <Icon {...p}><path d="m6 9 6 6 6-6" /></Icon>;
+const ChevronRight = (p) => <Icon {...p}><path d="m9 18 6-6-6-6" /></Icon>;
+const Search = (p) => <Icon {...p}><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></Icon>;
+const X = (p) => <Icon {...p}><path d="M18 6 6 18" /><path d="m6 6 12 12" /></Icon>;
+const Check = (p) => <Icon {...p}><path d="M20 6 9 17l-5-5" /></Icon>;
+const ExternalLink = (p) => <Icon {...p}><path d="M15 3h6v6" /><path d="M10 14 21 3" /><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></Icon>;
+const ShieldCheck = (p) => <Icon {...p}><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /><path d="m9 12 2 2 4-4" /></Icon>;
+const Sun = (p) => <Icon {...p}><circle cx="12" cy="12" r="4" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" /></Icon>;
+const Moon = (p) => <Icon {...p}><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" /></Icon>;
+
+/* ============================================================================
+   MALAYSIAN CREDIT CARD OPTIMISER  —  v3
+   ----------------------------------------------------------------------------
+   Data model and scoring engine carried over unchanged from v2: each card
+   carries its OWN conversion table (points per 1,000 miles, per airline, plus
+   a cash-redemption rate) because Malaysian banks price conversions by CARD
+   TIER, not by bank. Sign-up bonuses are modelled separately with a year-1
+   toggle, and a multi-year cumulative curve prices in observed devaluation.
+
+   The ONLY irreducible assumption left is what one airline mile is worth to
+   you in ringgit — that depends on the cabin you redeem, so the Valuation tab
+   lets you derive it from a real redemption instead of guessing.
+
+   WHAT'S NEW IN v3 (merged in from the earlier "Optimizer Pro" build)
+   1. Dark mode, toggleable, persisted in localStorage.
+   2. Every spending / eligibility figure starts at 0 — nothing is pre-filled,
+      so the ranking always reflects what YOU typed, never a stranger's guess.
+   3. "Hide cards I can't get" starts OFF, since income starts at 0 and would
+      otherwise hide the entire database on first load.
+   4. Rebuilt as a single dependency-light file (React + Tailwind via CDN,
+      hand-drawn icons) so it works as a plain static page on any device,
+      instead of a fixed-width desktop layout.
+
+   NOTE ON THE OLDER BUILD'S CARD LIST: its per-bank point formulas (UOB, CIMB,
+   HSBC, SC, RHB) were hard-coded shortcuts and, on inspection, some fees were
+   already stale (e.g. it modelled CIMB Visa Infinite as fee-free; this build's
+   sourced CIMB schedule shows RM600, waived at RM40k spend). Rather than merge
+   two conflicting numbers for the same card, this version keeps the sourced
+   v2 database as the single source of truth and drops the older shortcuts.
+   Its bank coverage (UOB, CIMB, HSBC, SC, RHB) is already a subset of the 16
+   banks below. Its passcode lock screen was also dropped — a client-side
+   password baked into the page's JavaScript is visible to anyone who views
+   source, so it protected nothing and would have been misleading to keep.
+   ========================================================================== */
+
+/* ---------------------------------------------------------------------------
+   1. SPEND CATEGORIES
+   ------------------------------------------------------------------------- */
+const CATS = [
+  { key: "groceries",   label: "Groceries",                   def: 0, fx: false },
+  { key: "dining",      label: "Dining & cafes",              def: 0, fx: false },
+  { key: "petrol",      label: "Petrol",                      def: 0, fx: false },
+  { key: "onlineLocal", label: "Online shopping (MY)",        def: 0, fx: false },
+  { key: "onlineOs",    label: "Online shopping (overseas)",  def: 0, fx: true  },
+  { key: "ewallet",     label: "E-wallet reload",             def: 0, fx: false },
+  { key: "utilities",   label: "Utilities & bills",           def: 0, fx: false },
+  { key: "transport",   label: "e-Hailing, toll, parking",    def: 0, fx: false },
+  { key: "entertain",   label: "Streaming & cinema",          def: 0, fx: false },
+  { key: "travelAir",   label: "Airlines & travel agents",    def: 0, fx: false },
+  { key: "hotel",       label: "Hotels",                      def: 0, fx: false },
+  { key: "overseasRet", label: "Overseas retail (in person)", def: 0, fx: true  },
+  { key: "insurance",   label: "Insurance premiums",          def: 0, fx: false },
+  { key: "education",   label: "Education & government",      def: 0, fx: false },
+  { key: "retail",      label: "Other retail",                def: 0, fx: false },
+];
+
+/* ---------------------------------------------------------------------------
+   2. FREQUENT FLYER PROGRAMMES
+   `def` is a STARTING value in RM per mile, not a fact. Override it in the
+   Valuation tab, ideally by working backwards from a redemption you'd
+   actually make. Ranked roughly by scarcity: Enrich is the easiest to earn and
+   the least valuable per mile; KrisFlyer and Asia Miles are harder and worth
+   more, especially in premium cabins.
+   ------------------------------------------------------------------------- */
+const FFP = {
+  enrich:    { name: "Enrich",        airline: "Malaysia Airlines",  def: 0.030 },
+  krisflyer: { name: "KrisFlyer",     airline: "Singapore Airlines", def: 0.045 },
+  asia:      { name: "Asia Miles",    airline: "Cathay Pacific",     def: 0.040 },
+  avios:     { name: "Avios",         airline: "British Airways",    def: 0.040 },
+  airasia:   { name: "airasia points",airline: "AirAsia",            def: 0.018 },
+};
+
+/* ---------------------------------------------------------------------------
+   3. CONVERSION TABLES
+   ---------------------------------------------------------------------------
+   cashPer1  – points needed for RM1 of cash rebate / voucher value
+   ffp       – points needed per 1,000 miles, by programme. null = not offered
+   block     – minimum transfer block, in POINTS
+   fee       – RM charged per transfer transaction
+   expiry    – months the bank's points stay alive before conversion
+   sourced   – true only where the ratio came off an issuer page
+   ------------------------------------------------------------------------- */
+const CONV = {
+  cashOnly: {
+    label: "Statement cash rebate", cashPer1: 1, ffp: {}, block: 0, fee: 0,
+    expiry: 0, sourced: true, src: "Rebate posts directly to the statement", srcDate: "2026-05",
+  },
+  mbPremium: {
+    label: "TreatsPoints — Visa Infinite / World Elite tier",
+    cashPer1: 500,
+    ffp: { enrich: 12500, krisflyer: 12500, asia: 12500, airasia: 7000 },
+    block: 12500, fee: 0, expiry: 36, sourced: true,
+    src: "https://www.maybank2u.com.my/iwov-resources/pdf/personal/cards/treats_reward/TPoints-Fee-AirMiles.pdf",
+    srcDate: "2026-03",
+    note: "Rose from 10,000 to 12,500 TP per 1,000 miles on 22 February 2025.",
+  },
+  mbStandard: {
+    label: "TreatsPoints — Classic / Gold / Platinum / Signature tier",
+    cashPer1: 500,
+    ffp: { enrich: 20000, krisflyer: 20000, asia: 20000, airasia: 7000 },
+    block: 20000, fee: 0, expiry: 36, sourced: true,
+    src: "https://www.maybank2u.com.my/iwov-resources/pdf/personal/cards/treats_reward/TPoints-Fee-AirMiles.pdf",
+    srcDate: "2026-03",
+    note: "Published as 20,000 TP = 1,000 Enrich or Cathay; 10,000 TP = 500 KrisFlyer.",
+  },
+  mbGrab: {
+    label: "GrabRewards Points", cashPer1: 100, ffp: {}, block: 0, fee: 0,
+    expiry: 12, sourced: false, src: "", srcDate: "2026-05",
+    note: "Redeemed inside the Grab app; no airline transfer path.",
+  },
+  cimb: {
+    label: "CIMB Bonus Points",
+    cashPer1: 500,
+    ffp: { enrich: 12500, krisflyer: 15000, asia: 15000, avios: 15000, airasia: 15000 },
+    block: 75000, fee: 0, expiry: 36, sourced: true,
+    src: "https://www.cimb.com.my/en/personal/day-to-day-banking/cards/credit-card/bonus-points-redemption.html",
+    srcDate: "2026-05",
+    note: "62,500 BP = 5,000 Enrich; 75,000 BP = 5,000 KrisFlyer / Asia Miles / Avios. Minimum block was raised fivefold to 75,000 BP.",
+  },
+  uobMetal: {
+    label: "UNIRinggit — Visa Infinite Metal",
+    cashPer1: 100, ffp: { enrich: 5000, krisflyer: 5000, asia: 5000, airasia: 5000 },
+    block: 5000, fee: 0, expiry: 24, sourced: true,
+    src: "https://unirm.my/Member/Products/Product_Catalogue_Air_Miles.aspx", srcDate: "2026-05",
+    note: "Best published UNIRM ratio in the catalogue. Premium tiers pay no conversion fee.",
+  },
+  uobPBVI: {
+    label: "UNIRinggit — Privilege Banking Visa Infinite",
+    cashPer1: 100, ffp: { enrich: 10000, krisflyer: 10000, asia: 10000, airasia: 10000 },
+    block: 10000, fee: 0, expiry: 24, sourced: true,
+    src: "https://unirm.my/Member/Products/Product_Catalogue_Air_Miles.aspx", srcDate: "2026-05",
+  },
+  uobStd: {
+    label: "UNIRinggit — Visa Infinite / PRVI Miles Elite",
+    cashPer1: 100, ffp: { enrich: 12000, krisflyer: 12000, asia: 12000, airasia: 12000 },
+    block: 12000, fee: 0, expiry: 24, sourced: true,
+    src: "https://www.uob.com.my/wealthbanking/banking/card-prvi-miles-elite.page", srcDate: "2026-05",
+    note: "UOB raised UNIRM required per 1,000 miles by 11% to 33% on 23 September 2024.",
+  },
+  hsbc: {
+    label: "HSBC Rewards Points", cashPer1: 500,
+    ffp: { enrich: 25000, krisflyer: 30000, asia: 25000, avios: 25000, airasia: 25000 },
+    block: 25000, fee: 0, expiry: 36, sourced: false, src: "", srcDate: "2026-05",
+    note: "Ratios shown follow HSBC's regional schedule. Confirm the Malaysian catalogue before relying on this.",
+  },
+  sc:   { label: "SC 360° Rewards Points", cashPer1: 500,
+          ffp: { enrich: 15000, krisflyer: 15000, asia: 15000, avios: 15000, airasia: 15000 },
+          block: 15000, fee: 0, expiry: 36, sourced: false, src: "", srcDate: "2026-05" },
+  rhb:  { label: "RHB Rewards Points", cashPer1: 500,
+          ffp: { enrich: 15000, krisflyer: 20000, asia: 20000, airasia: 15000 },
+          block: 15000, fee: 0, expiry: 36, sourced: false, src: "", srcDate: "2026-05" },
+  hlb:  { label: "Hong Leong Reward Points", cashPer1: 500,
+          ffp: { enrich: 10000, airasia: 12000 },
+          block: 10000, fee: 0, expiry: 36, sourced: false, src: "", srcDate: "2026-05",
+          note: "Hong Leong Visa Infinite is widely reported at 1.00 mile per RM on dining, the strongest local rate in the market." },
+  pb:   { label: "Public Bank VIP Points", cashPer1: 500,
+          ffp: { enrich: 20000, airasia: 20000 },
+          block: 20000, fee: 0, expiry: 36, sourced: false, src: "", srcDate: "2026-05" },
+  amb:  { label: "AmBank Rewards", cashPer1: 500,
+          ffp: { enrich: 15000, airasia: 15000 },
+          block: 15000, fee: 0, expiry: 36, sourced: false, src: "", srcDate: "2026-05" },
+  alli: { label: "Alliance Timeless Points", cashPer1: 500,
+          ffp: { enrich: 15000, airasia: 15000 },
+          block: 15000, fee: 0, expiry: 0, sourced: false, src: "", srcDate: "2026-05" },
+  ocbc: { label: "OCBC Rewards Points", cashPer1: 500,
+          ffp: { enrich: 20000, airasia: 20000 },
+          block: 20000, fee: 0, expiry: 36, sourced: false, src: "", srcDate: "2026-05" },
+  affin:{ label: "Affin Reward Points", cashPer1: 500,
+          ffp: { enrich: 20000, airasia: 20000 },
+          block: 20000, fee: 0, expiry: 36, sourced: false, src: "", srcDate: "2026-05" },
+  bonuslink: { label: "BonusLink Points", cashPer1: 200,
+          ffp: { enrich: 12000, airasia: 12000 },
+          block: 12000, fee: 0, expiry: 36, sourced: false, src: "", srcDate: "2026-05",
+          note: "BonusLink also spends at face value in Petronas and partner stores, which is often the better route." },
+  enrichDirect: { label: "Enrich Points earned directly", cashPer1: 0,
+          ffp: { enrich: 1000 }, block: 1000, fee: 0, expiry: 36, sourced: false, src: "", srcDate: "2026-05",
+          note: "No conversion step, so no block wastage and no transfer fee." },
+  milesDirect: { label: "Airline miles earned directly", cashPer1: 0,
+          ffp: { krisflyer: 1000, enrich: 1000, asia: 1000 }, block: 1000, fee: 0,
+          expiry: 36, sourced: false, src: "", srcDate: "2026-05" },
+  islam:{ label: "Bank Islam Points", cashPer1: 500, ffp: {}, block: 0, fee: 0,
+          expiry: 36, sourced: false, src: "", srcDate: "2026-05" },
+  aeon: { label: "AEON Point", cashPer1: 200, ffp: {}, block: 0, fee: 0,
+          expiry: 24, sourced: false, src: "", srcDate: "2026-05" },
+};
+
+/* ---------------------------------------------------------------------------
+   4. OBSERVED DEVALUATION HISTORY
+   ------------------------------------------------------------------------- */
+const DEVAL = {
+  mbPremium:  { annual: 0.12, events: ["Feb 2025: 10,000 to 12,500 TP per 1,000 miles, a 25% rise"] },
+  mbStandard: { annual: 0.14, events: ["Feb 2025: revision raised points needed by 25% to 43% across the range"] },
+  cimb:       { annual: 0.10, events: ["2024: minimum transfer block raised fivefold, from 15,000 to 75,000 BP"] },
+  uobMetal:   { annual: 0.08, events: ["Sep 2024: UNIRM needed per 1,000 miles rose 11% to 33% across the range"] },
+  uobPBVI:    { annual: 0.08, events: ["Sep 2024: UNIRM needed per 1,000 miles rose 11% to 33% across the range"] },
+  uobStd:     { annual: 0.08, events: ["Sep 2024: UNIRM needed per 1,000 miles rose 11% to 33% across the range"] },
+  hsbc:       { annual: 0.10, events: ["Jan 2025: KrisFlyer ratio moved from 25,000 to 30,000 points per 10,000 miles"] },
+  amb:        { annual: 0.12, events: ["2025: Enrich Visa Infinite earn rates cut"] },
+  alli:       { annual: 0.12, events: ["2025: Visa Platinum devalued"] },
+  cashOnly:   { annual: 0.03, events: ["Cashback caps drift down but rebate is not subject to award-chart inflation"] },
+  _default:   { annual: 0.08, events: [] },
+};
+const devalFor = (k) => DEVAL[k] || DEVAL._default;
+
+/* ---------------------------------------------------------------------------
+   5. CARD DATABASE
+   ------------------------------------------------------------------------- */
+const EX = ["ewallet", "utilities", "insurance", "education"];
+const NOSIGN = { value: 0, minSpend: 0, window: 60, desc: "" };
+
+const CARDS = [
+  { id: "mb-2gold", bank: "Maybank", name: "2 Cards Gold (Amex + Visa)", net: "Amex / Visa",
+    conv: "mbStandard", fee: 0, waiver: { t: "lifetime" }, income: 30000,
+    base: { u: "pts", rate: 1 },
+    rules: [{ cats: ["*"], u: "cb", rate: 5, cap: 50, wknd: true, label: "5% weekend cashback on the Amex face" }],
+    capTotal: 50, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05",
+    signup: { value: 100, minSpend: 500, window: 60, desc: "Cashback on first spend" },
+    note: "Weekend rebate sits on the Amex card only, and Amex acceptance is patchy." },
+
+  { id: "mb-2plat", bank: "Maybank", name: "2 Cards Platinum (Amex + Visa)", net: "Amex / Visa",
+    conv: "mbStandard", fee: 0, waiver: { t: "lifetime" }, income: 60000,
+    base: { u: "pts", rate: 1 },
+    rules: [
+      { cats: ["*"], u: "cb", rate: 5, cap: 50, wknd: true, label: "5% weekend cashback on the Amex face" },
+      { cats: ["*"], u: "pts", rate: 5, cap: 5000, wknd: true, label: "5x TreatsPoints on weekends" },
+    ],
+    capTotal: 50, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+
+  { id: "mb-vi", bank: "Maybank", name: "Visa Infinite", net: "Visa Infinite",
+    conv: "mbPremium", fee: 800, waiver: { t: "spend", v: 30000 }, income: 150000,
+    base: { u: "pts", rate: 1 },
+    rules: [{ cats: ["onlineOs", "overseasRet", "travelAir", "hotel"], u: "pts", rate: 5, label: "5x on overseas and travel" }],
+    capTotal: null, fx: 1.00, lounge: { p: "Plaza Premium", v: 12, g: 0 }, ins: 1000000,
+    excl: EX, verified: "2026-05", signup: NOSIGN,
+    note: "Earn rises to up to 10x TreatsPoints from 1 June 2026 per Maybank's card listing." },
+
+  { id: "mb-worldelite", bank: "Maybank", name: "World Elite Mastercard", net: "World Elite MC",
+    conv: "mbPremium", fee: 800, waiver: { t: "spend", v: 30000 }, income: 100000,
+    base: { u: "pts", rate: 1 },
+    rules: [{ cats: ["dining", "onlineOs", "overseasRet", "travelAir"], u: "pts", rate: 5, label: "5x dining, overseas and travel" }],
+    capTotal: null, fx: 1.00, lounge: { p: "Plaza Premium", v: 6, g: 0 }, ins: 500000,
+    excl: EX, verified: "2026-05", signup: NOSIGN,
+    note: "Low miles yield, but the flexible conversion makes it useful for topping up a business-class redemption." },
+
+  { id: "mb-petrolgroc", bank: "Maybank", name: "Islamic Ikhwan Visa Platinum Card-i", net: "Visa Platinum",
+    conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 70000,
+    base: { u: "cb", rate: 0.25 },
+    rules: [{ cats: ["petrol", "groceries"], u: "cb", rate: 5, cap: 88, label: "5% petrol and groceries daily" }],
+    capTotal: 88, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN,
+    note: "Maybank lists a RM88 monthly cap on the 5% petrol and groceries rebate." },
+
+  { id: "mb-fnf", bank: "Maybank", name: "Family & Friends Card", net: "Visa Platinum",
+    conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 30000,
+    base: { u: "cb", rate: 0.25 },
+    rules: [{ cats: ["groceries", "petrol", "transport", "entertain"], u: "cb", rate: 5, cap: 50, min: 1500, label: "5% on four chosen lifestyle categories" }],
+    capTotal: 50, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+
+  { id: "mb-grab", bank: "Maybank", name: "Grab Mastercard Platinum", net: "Platinum MC",
+    conv: "mbGrab", fee: 0, waiver: { t: "lifetime" }, income: 24000,
+    base: { u: "pts", rate: 1 },
+    rules: [{ cats: ["transport", "dining"], u: "pts", rate: 5, cap: 5000, label: "Boosted GrabRewards on Grab spend" }],
+    capTotal: null, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05",
+    signup: { value: 60, minSpend: 300, window: 60, desc: "1,000 welcome GrabRewards Points on activation plus a RM50 Grab voucher" },
+    note: "" },
+
+  { id: "cimb-cashrebate", bank: "CIMB", name: "Cash Rebate Platinum", net: "Visa/MC Platinum",
+    conv: "cashOnly", fee: 195, waiver: { t: "swipes", v: 12 }, income: 36000,
+    base: { u: "cb", rate: 0.20 },
+    rules: [
+      { cats: ["petrol"], u: "cb", rate: 8, cap: 30, wknd: true, label: "8% petrol on weekends" },
+      { cats: ["groceries", "dining"], u: "cb", rate: 2, cap: 30, wknd: true, label: "2% groceries and dining on weekends" },
+    ],
+    capTotal: 60, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+
+  { id: "cimb-e", bank: "CIMB", name: "e Credit Card", net: "Visa Platinum",
+    conv: "cimb", fee: 0, waiver: { t: "lifetime" }, income: 24000,
+    base: { u: "cb", rate: 0.20 },
+    rules: [{ cats: ["onlineLocal", "onlineOs", "ewallet", "transport"], u: "cb", rate: 8, cap: 50, min: 500, label: "8% online, e-wallet and contactless" }],
+    capTotal: 50, fx: 1.00, lounge: null, ins: 0, excl: ["utilities", "insurance", "education"], verified: "2026-05",
+    signup: NOSIGN,
+    note: "Reaches roughly 0.96 miles per ringgit to Enrich, but only on e-Day, the 28th of each month, capped near RM1,667." },
+
+  { id: "cimb-petronas", bank: "CIMB", name: "Petronas Visa Platinum", net: "Visa Platinum",
+    conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 24000,
+    base: { u: "cb", rate: 0.20 },
+    rules: [{ cats: ["petrol"], u: "cb", rate: 8, cap: 25, min: 500, label: "8% at Petronas stations" }],
+    capTotal: 40, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+
+  { id: "cimb-travel", bank: "CIMB", name: "Travel World Elite Mastercard", net: "World Elite MC",
+    conv: "cimb", fee: 600, waiver: { t: "spend", v: 40000 }, income: 150000,
+    base: { u: "pts", rate: 1 },
+    rules: [{ cats: ["travelAir", "hotel", "onlineOs", "overseasRet"], u: "pts", rate: 10, label: "10x on travel, airlines, duty-free and foreign currency" }],
+    capTotal: null, fx: 1.25, lounge: { p: "DragonPass", v: 8, g: 0 }, ins: 1000000,
+    excl: EX, verified: "2026-05", signup: NOSIGN,
+    note: "Roughly 0.80 miles per ringgit to Enrich. The 1.25% foreign exchange fee is among the lowest in the market." },
+
+  { id: "cimb-preferred", bank: "CIMB", name: "Preferred Visa Infinite", net: "Visa Infinite",
+    conv: "cimb", fee: 600, waiver: { t: "spend", v: 40000 }, income: 150000,
+    base: { u: "pts", rate: 1 },
+    rules: [{ cats: ["onlineOs", "overseasRet", "dining", "hotel"], u: "pts", rate: 10, label: "10x on dining and overseas" }],
+    capTotal: null, fx: 2.25, lounge: { p: "Plaza Premium", v: 6, g: 0 }, ins: 1000000,
+    excl: EX, verified: "2026-05", signup: NOSIGN,
+    note: "About 0.92 miles per ringgit to Enrich at the higher spend tiers." },
+
+  { id: "cimb-world", bank: "CIMB", name: "World Mastercard", net: "World MC",
+    conv: "cimb", fee: 480, waiver: { t: "spend", v: 30000 }, income: 100000,
+    base: { u: "pts", rate: 1 },
+    rules: [{ cats: ["dining", "onlineOs", "overseasRet"], u: "pts", rate: 5, label: "5x dining and overseas" }],
+    capTotal: null, fx: 2.25, lounge: { p: "Plaza Premium", v: 4, g: 0 }, ins: 500000,
+    excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+
+  { id: "pb-vsig", bank: "Public Bank", name: "Visa Signature", net: "Visa Signature",
+    conv: "cashOnly", fee: 500, waiver: { t: "swipes", v: 12 }, income: 100000,
+    base: { u: "cb", rate: 0.30 },
+    rules: [{ cats: ["onlineOs", "overseasRet", "onlineLocal"], u: "cb", rate: 6, cap: 38, min: 2000, label: "6% overseas and online" }],
+    capTotal: 38, fx: 1.00, lounge: { p: "Plaza Premium", v: 4, g: 0 }, ins: 500000,
+    excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+
+  { id: "pb-quantum", bank: "Public Bank", name: "Quantum Visa / Mastercard", net: "Visa/MC",
+    conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 24000,
+    base: { u: "cb", rate: 0.10 },
+    rules: [{ cats: ["onlineLocal", "onlineOs", "transport", "entertain"], u: "cb", rate: 5, cap: 30, min: 1500, label: "5% online, contactless and mobile wallet" }],
+    capTotal: 30, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+
+  { id: "pb-vi", bank: "Public Bank", name: "Visa Infinite", net: "Visa Infinite",
+    conv: "pb", fee: 800, waiver: { t: "spend", v: 50000 }, income: 150000,
+    base: { u: "pts", rate: 1 },
+    rules: [{ cats: ["onlineOs", "overseasRet", "travelAir", "hotel"], u: "pts", rate: 5, label: "5x overseas and travel" }],
+    capTotal: null, fx: 1.00, lounge: { p: "Plaza Premium", v: 8, g: 0 }, ins: 1000000,
+    excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+
+  { id: "pb-aia", bank: "Public Bank", name: "PB-AIA Visa Platinum", net: "Visa Platinum",
+    conv: "pb", fee: 250, waiver: { t: "swipes", v: 12 }, income: 60000,
+    base: { u: "pts", rate: 1 },
+    rules: [{ cats: ["insurance"], u: "pts", rate: 3, label: "3x on AIA premiums" }],
+    capTotal: null, fx: 1.00, lounge: null, ins: 0, excl: ["utilities", "education"], verified: "2026-05",
+    signup: NOSIGN, note: "One of the few cards that earns on insurance premiums." },
+
+  { id: "rhb-shell", bank: "RHB", name: "Shell Visa", net: "Visa Platinum",
+    conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 24000,
+    base: { u: "cb", rate: 0.20 },
+    rules: [{ cats: ["petrol", "groceries", "onlineLocal", "ewallet", "utilities"], u: "cb", rate: 5, cap: 30, min: 800, label: "5% on everyday essentials" }],
+    capTotal: 30, fx: 1.00, lounge: null, ins: 0, excl: ["insurance", "education"], verified: "2026-05",
+    signup: { value: 50, minSpend: 300, window: 60, desc: "Welcome cashback on first spend" },
+    note: "Unusually, e-wallet reloads and utilities are inside the bonus category list." },
+
+  { id: "rhb-rewards", bank: "RHB", name: "Rewards Motion Code Visa Signature", net: "Visa Signature",
+    conv: "rhb", fee: 320, waiver: { t: "swipes", v: 12 }, income: 60000,
+    base: { u: "pts", rate: 1 },
+    rules: [{ cats: ["onlineLocal", "onlineOs", "dining"], u: "pts", rate: 5, cap: 8000, label: "5x online and dining" }],
+    capTotal: null, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05",
+    signup: { value: 50, minSpend: 500, window: 60, desc: "5,000 welcome Reward Points" }, note: "" },
+
+  { id: "rhb-vi", bank: "RHB", name: "Visa Infinite", net: "Visa Infinite",
+    conv: "rhb", fee: 600, waiver: { t: "spend", v: 36000 }, income: 150000,
+    base: { u: "pts", rate: 1 },
+    rules: [{ cats: ["onlineOs", "overseasRet", "travelAir", "hotel"], u: "pts", rate: 5, label: "5x overseas and travel" }],
+    capTotal: null, fx: 1.00, lounge: { p: "Plaza Premium", v: 6, g: 1 }, ins: 1000000,
+    excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+
+  { id: "rhb-premier-vi", bank: "RHB", name: "Premier Visa Infinite", net: "Visa Infinite",
+    conv: "rhb", fee: 800, waiver: { t: "lifetime" }, income: 250000,
+    base: { u: "pts", rate: 1.5 },
+    rules: [{ cats: ["onlineOs", "overseasRet", "travelAir", "hotel"], u: "pts", rate: 6, label: "6x overseas and travel" }],
+    capTotal: null, fx: 1.00, lounge: { p: "Plaza Premium", v: 12, g: 1 }, ins: 1500000,
+    excl: EX, verified: "2026-05", signup: NOSIGN, note: "Requires an RHB Premier relationship." },
+
+  { id: "hlb-vi", bank: "Hong Leong", name: "Visa Infinite", net: "Visa Infinite",
+    conv: "hlb", fee: 800, waiver: { t: "spend", v: 40000 }, income: 150000,
+    base: { u: "pts", rate: 1 },
+    rules: [{ cats: ["dining"], u: "pts", rate: 10, label: "Boosted rate on dining, uncapped" }],
+    capTotal: null, fx: 1.00, lounge: { p: "Plaza Premium", v: 8, g: 1 }, ins: 1000000,
+    excl: EX, verified: "2026-05", signup: NOSIGN,
+    note: "Widely rated the strongest local-spend miles card in Malaysia at about 1.00 Enrich mile per ringgit on dining, with no cap." },
+
+  { id: "hlb-wise", bank: "Hong Leong", name: "Wise Card", net: "Visa Platinum",
+    conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 24000,
+    base: { u: "cb", rate: 0.25 },
+    rules: [{ cats: ["dining", "groceries", "petrol"], u: "cb", rate: 8, cap: 30, min: 1500, label: "8% on two categories you select" }],
+    capTotal: 60, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN,
+    note: "You choose the bonus categories; the model assumes dining, groceries and petrol." },
+
+  { id: "hlb-essential", bank: "Hong Leong", name: "Essential Mastercard", net: "MC",
+    conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 24000,
+    base: { u: "cb", rate: 1.00 }, rules: [],
+    capTotal: 25, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN,
+    note: "Flat rate on everything, but a low monthly ceiling." },
+
+  { id: "hlb-gsc", bank: "Hong Leong", name: "GSC Platinum", net: "Visa Platinum",
+    conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 24000,
+    base: { u: "cb", rate: 0.25 },
+    rules: [{ cats: ["entertain"], u: "cb", rate: 10, cap: 20, label: "10% cinema and entertainment" }],
+    capTotal: 25, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+
+  { id: "amb-cashrebate", bank: "AmBank", name: "Cash Rebate Visa Platinum", net: "Visa Platinum",
+    conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 24000,
+    base: { u: "cb", rate: 0.20 },
+    rules: [{ cats: ["petrol", "groceries"], u: "cb", rate: 5, cap: 30, min: 1500, label: "5% petrol and groceries" }],
+    capTotal: 30, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+
+  { id: "amb-bonuslink-vi", bank: "AmBank", name: "BonusLink Visa Infinite", net: "Visa Infinite",
+    conv: "bonuslink", fee: 550, waiver: { t: "spend", v: 30000 }, income: 150000,
+    base: { u: "pts", rate: 1 },
+    rules: [{ cats: ["groceries", "petrol", "dining"], u: "pts", rate: 5, label: "5x BonusLink on everyday spend" }],
+    capTotal: null, fx: 1.00, lounge: { p: "Plaza Premium", v: 6, g: 0 }, ins: 1000000,
+    excl: EX, verified: "2026-05", signup: NOSIGN,
+    note: "BonusLink spends at face value in Petronas and partner stores, which usually beats the airline route." },
+
+  { id: "amb-enrich-vi", bank: "AmBank", name: "Enrich Visa Infinite", net: "Visa Infinite",
+    conv: "enrichDirect", fee: 600, waiver: { t: "spend", v: 36000 }, income: 150000,
+    base: { u: "pts", rate: 0.20 },
+    rules: [{ cats: ["onlineOs", "overseasRet", "travelAir"], u: "pts", rate: 0.40, label: "Higher Enrich accrual on overseas and Malaysia Airlines" }],
+    capTotal: null, fx: 1.00, lounge: { p: "Plaza Premium", v: 6, g: 0 }, ins: 1000000,
+    excl: EX, verified: "2026-05", signup: NOSIGN,
+    note: "Earn rates were cut during 2025 and this card is no longer recommended by most Malaysian miles trackers." },
+
+  { id: "amb-signature", bank: "AmBank", name: "SIGNATURE Priority Banking Visa Infinite", net: "Visa Infinite",
+    conv: "amb", fee: 800, waiver: { t: "lifetime" }, income: 250000,
+    base: { u: "pts", rate: 2 },
+    rules: [{ cats: ["onlineOs", "overseasRet", "travelAir", "hotel"], u: "pts", rate: 6, label: "6x overseas and travel" }],
+    capTotal: null, fx: 1.00, lounge: { p: "Plaza Premium", v: 12, g: 1 }, ins: 1500000,
+    excl: EX, verified: "2026-05", signup: NOSIGN, note: "Priority Banking relationship required." },
+
+  { id: "alli-virtual", bank: "Alliance Bank", name: "Visa Virtual Card", net: "Visa Virtual",
+    conv: "alli", fee: 0, waiver: { t: "lifetime" }, income: 36000,
+    base: { u: "pts", rate: 1 },
+    rules: [{ cats: ["ewallet", "onlineLocal", "insurance", "utilities"], u: "pts", rate: 8, cap: 24000, label: "Boosted rate on e-wallet and online, including insurance and utilities" }],
+    capTotal: null, fx: 1.00, lounge: null, ins: 0, excl: [], verified: "2026-05", signup: NOSIGN,
+    note: "About 0.53 Enrich miles per ringgit. Rare in earning on insurance, utilities and e-wallet. Caps near RM3,000 online and RM3,000 e-wallet a month." },
+
+  { id: "alli-vi", bank: "Alliance Bank", name: "Visa Infinite", net: "Visa Infinite",
+    conv: "cashOnly", fee: 588, waiver: { t: "spend", v: 40000 }, income: 150000,
+    base: { u: "cb", rate: 1.00 },
+    rules: [{ cats: ["onlineOs", "overseasRet"], u: "cb", rate: 2, label: "2% on foreign currency spend" }],
+    capTotal: null, fx: 1.00, lounge: { p: "Plaza Premium", v: 6, g: 0 }, ins: 1000000,
+    excl: EX, verified: "2026-05", signup: NOSIGN,
+    note: "Uncapped flat rebate, unusual in Malaysia. Suits a high but spread-out spender." },
+
+  { id: "alli-younique", bank: "Alliance Bank", name: "You:nique Visa Platinum", net: "Visa Platinum",
+    conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 24000,
+    base: { u: "cb", rate: 0.30 },
+    rules: [{ cats: ["*"], u: "cb", rate: 1.00, cap: 60, min: 3000, label: "Rebate rate you select, applied to all spend" }],
+    capTotal: 60, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+
+  { id: "hsbc-live", bank: "HSBC", name: "Live+ Visa Platinum", net: "Visa Platinum",
+    conv: "cashOnly", fee: 250, waiver: { t: "swipes", v: 12 }, income: 36000,
+    base: { u: "cb", rate: 0.20 },
+    rules: [{ cats: ["dining", "groceries", "entertain"], u: "cb", rate: 8, cap: 50, min: 2000, label: "8% dining, groceries and entertainment" }],
+    capTotal: 50, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05",
+    signup: { value: 200, minSpend: 2000, window: 60, desc: "Up to RM200 cashback for new primary cardholders" }, note: "" },
+
+  { id: "hsbc-amanah-mpower", bank: "HSBC Amanah", name: "MPower Platinum Card-i", net: "Visa Platinum",
+    conv: "cashOnly", fee: 240, waiver: { t: "swipes", v: 12 }, income: 36000,
+    base: { u: "cb", rate: 0.20 },
+    rules: [{ cats: ["petrol", "groceries", "ewallet"], u: "cb", rate: 8, cap: 50, min: 2000, label: "8% e-wallet, petrol and groceries" }],
+    capTotal: 50, fx: 1.00, lounge: null, ins: 0, excl: ["utilities", "insurance", "education"], verified: "2026-05",
+    signup: { value: 200, minSpend: 2000, window: 60, desc: "Up to RM200 cashback for new primary cardholders" }, note: "" },
+
+  { id: "hsbc-travelone", bank: "HSBC", name: "TravelOne Credit Card", net: "Visa Signature",
+    conv: "hsbc", fee: 600, waiver: { t: "spend", v: 30000 }, income: 100000,
+    base: { u: "pts", rate: 1 },
+    rules: [{ cats: ["travelAir", "hotel", "onlineOs", "overseasRet", "dining"], u: "pts", rate: 6, label: "Boosted points on travel, dining and foreign currency" }],
+    capTotal: null, fx: 1.00, lounge: { p: "Plaza Premium", v: 8, g: 0 }, ins: 1000000,
+    excl: EX, verified: "2026-05", signup: NOSIGN,
+    note: "Transfers to Malaysia Airlines, airasia, Singapore Airlines and hotel programmes including Marriott Bonvoy, IHG and Accor." },
+
+  { id: "hsbc-premier-vi", bank: "HSBC", name: "Premier World Mastercard", net: "World MC",
+    conv: "hsbc", fee: 600, waiver: { t: "lifetime" }, income: 250000,
+    base: { u: "pts", rate: 1 },
+    rules: [
+      { cats: ["retail", "dining"], u: "pts", rate: 8, cap: 8000, label: "Boosted rate on local contactless, capped near RM1,000 a month" },
+      { cats: ["groceries", "onlineLocal"], u: "pts", rate: 5, cap: 5000, label: "Boosted rate on groceries and online" },
+    ],
+    capTotal: null, fx: 1.00, lounge: { p: "Priority Pass", v: 12, g: 1 }, ins: 1500000,
+    excl: EX, verified: "2026-05", signup: NOSIGN,
+    note: "Bonus rates are capped at roughly RM1,000 per category per month, after which earning collapses. Requires Premier status." },
+
+  { id: "sc-journey", bank: "Standard Chartered", name: "Journey Credit Card", net: "Visa Platinum",
+    conv: "sc", fee: 250, waiver: { t: "swipes", v: 12 }, income: 36000,
+    base: { u: "pts", rate: 1 },
+    rules: [
+      { cats: ["dining"], u: "pts", rate: 8, label: "Boosted dining rate, uncapped" },
+      { cats: ["onlineLocal", "onlineOs", "overseasRet"], u: "pts", rate: 15, cap: 15000, min: 500, label: "15x points online and overseas" },
+    ],
+    capTotal: null, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05",
+    signup: { value: 150, minSpend: 1500, window: 60, desc: "Welcome cashback or gift" },
+    note: "Around 0.50 miles per ringgit on dining to KrisFlyer or Asia Miles, and dining is not capped." },
+
+  { id: "sc-simplycash", bank: "Standard Chartered", name: "Simply Cash Visa Platinum", net: "Visa Platinum",
+    conv: "cashOnly", fee: 250, waiver: { t: "swipes", v: 12 }, income: 36000,
+    base: { u: "cb", rate: 1.50 }, rules: [],
+    capTotal: null, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN,
+    note: "Uncapped flat rebate. A sound baseline card to sit under a specialist." },
+
+  { id: "sc-worldmiles", bank: "Standard Chartered", name: "WorldMiles World Mastercard", net: "World MC",
+    conv: "milesDirect", fee: 600, waiver: { t: "spend", v: 36000 }, income: 100000,
+    base: { u: "pts", rate: 0.20 },
+    rules: [{ cats: ["onlineOs", "overseasRet", "travelAir", "hotel"], u: "pts", rate: 0.60, label: "Boosted miles on overseas and travel" }],
+    capTotal: null, fx: 1.00, lounge: { p: "Plaza Premium", v: 6, g: 0 }, ins: 1000000,
+    excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+
+  { id: "sc-priority-vi", bank: "Standard Chartered", name: "Priority Visa Infinite", net: "Visa Infinite",
+    conv: "sc", fee: 800, waiver: { t: "lifetime" }, income: 250000,
+    base: { u: "pts", rate: 2 },
+    rules: [{ cats: ["onlineOs", "overseasRet", "travelAir", "hotel"], u: "pts", rate: 6, label: "6x overseas and travel" }],
+    capTotal: null, fx: 1.00, lounge: { p: "Priority Pass", v: 12, g: 1 }, ins: 1500000,
+    excl: EX, verified: "2026-05", signup: NOSIGN,
+    note: "Includes complimentary overseas limousine transfers at the Priority Private tier." },
+
+  { id: "uob-one", bank: "UOB", name: "One Card", net: "Visa Platinum",
+    conv: "cashOnly", fee: 195, waiver: { t: "swipes", v: 12 }, income: 30000,
+    base: { u: "cb", rate: 0.20 },
+    rules: [
+      { cats: ["groceries", "dining", "petrol", "transport"], u: "cb", rate: 8, cap: 80, min: 2500, label: "Top tier, 8% on everyday categories" },
+      { cats: ["groceries", "dining", "petrol", "transport"], u: "cb", rate: 3, cap: 30, min: 1000, label: "Mid tier, 3%" },
+    ],
+    capTotal: 80, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05",
+    signup: { value: 138, minSpend: 500, window: 60, desc: "Up to RM138 welcome cashback, plus RM50 for setting up a recurring payment" },
+    note: "Minimum spend tiers are assessed quarterly in reality; the model checks them monthly." },
+
+  { id: "uob-evol", bank: "UOB", name: "EVOL Card", net: "Visa Platinum",
+    conv: "cashOnly", fee: 195, waiver: { t: "swipes", v: 12 }, income: 30000,
+    base: { u: "cb", rate: 0.20 },
+    rules: [{ cats: ["onlineLocal", "onlineOs", "ewallet", "entertain"], u: "cb", rate: 8, cap: 50, min: 2500, label: "8% online, e-wallet and entertainment" }],
+    capTotal: 50, fx: 1.00, lounge: null, ins: 0, excl: ["utilities", "insurance", "education"], verified: "2026-05",
+    signup: { value: 138, minSpend: 500, window: 60, desc: "Up to RM138 welcome cashback" }, note: "" },
+
+  { id: "uob-world", bank: "UOB", name: "World Card", net: "World MC",
+    conv: "uobStd", fee: 195, waiver: { t: "swipes", v: 12 }, income: 60000,
+    base: { u: "pts", rate: 1 },
+    rules: [{ cats: ["ewallet"], u: "pts", rate: 8, cap: 7200, label: "Boosted rate on e-wallet reloads" }],
+    capTotal: null, fx: 2.25, lounge: null, ins: 0, excl: ["utilities", "insurance", "education"], verified: "2026-05",
+    signup: NOSIGN,
+    note: "About 0.66 miles per ringgit on e-wallet, but capped near RM300 each for Touch 'n Go, Boost and BigPay." },
+
+  { id: "uob-prvi-elite", bank: "UOB", name: "PRVI Miles Elite Card", net: "World MC",
+    conv: "uobStd", fee: 500, waiver: { t: "spend", v: 30000 }, income: 100000,
+    base: { u: "pts", rate: 1 },
+    rules: [
+      { cats: ["onlineOs", "overseasRet"], u: "pts", rate: 10, label: "10x UNIRinggit on overseas spend" },
+      { cats: ["travelAir"], u: "pts", rate: 5, label: "5x UNIRinggit on airline spend" },
+    ],
+    capTotal: null, fx: 2.25, lounge: { p: "Plaza Premium", v: 8, g: 0 }, ins: 300000,
+    excl: EX, verified: "2026-05",
+    signup: { value: 500, minSpend: 0, window: 0, desc: "60,000 bonus UNIRinggit credited on payment of the annual fee" },
+    note: "0.83 miles per ringgit on foreign currency, rising to 1.00 for Singapore, Thailand, Vietnam and Indonesia. The go-to Malaysian card for overseas spend." },
+
+  { id: "uob-vi", bank: "UOB", name: "Visa Infinite", net: "Visa Infinite",
+    conv: "uobStd", fee: 600, waiver: { t: "spend", v: 40000 }, income: 150000,
+    base: { u: "pts", rate: 1 },
+    rules: [
+      { cats: ["onlineOs", "overseasRet"], u: "pts", rate: 10, label: "10x UNIRinggit overseas" },
+      { cats: ["dining"], u: "pts", rate: 5, label: "5x UNIRinggit on dining" },
+    ],
+    capTotal: null, fx: 2.25, lounge: { p: "Plaza Premium", v: 8, g: 1 }, ins: 1000000,
+    excl: EX, verified: "2026-05", signup: NOSIGN,
+    note: "0.83 miles per ringgit overseas, 0.41 on dining. No conversion fee at this tier." },
+
+  { id: "uob-vi-metal", bank: "UOB", name: "Visa Infinite Metal Card", net: "Visa Infinite",
+    conv: "uobMetal", fee: 3000, waiver: { t: "none" }, income: 200000,
+    base: { u: "pts", rate: 2 },
+    rules: [{ cats: ["onlineOs", "overseasRet", "travelAir", "hotel"], u: "pts", rate: 10, label: "10x UNIRinggit overseas and travel" }],
+    capTotal: null, fx: 2.25, lounge: { p: "DragonPass", v: 24, g: 1 }, ins: 2000000,
+    excl: EX, verified: "2026-05", signup: NOSIGN,
+    note: "2.00 miles per ringgit overseas, the highest in Malaysia, on a 5,000 UNIRinggit conversion. Requires roughly RM3 million in assets under management." },
+
+  { id: "uob-ladys", bank: "UOB", name: "Lady's Solitaire Metal Card", net: "World MC",
+    conv: "uobStd", fee: 800, waiver: { t: "spend", v: 40000 }, income: 100000,
+    base: { u: "pts", rate: 1 },
+    rules: [{ cats: ["retail", "onlineLocal"], u: "pts", rate: 6, cap: 12000, label: "Boosted rate on fashion and retail, capped near RM2,000" }],
+    capTotal: null, fx: 2.25, lounge: { p: "Plaza Premium", v: 4, g: 0 }, ins: 500000,
+    excl: EX, verified: "2026-05", signup: NOSIGN,
+    note: "About 0.50 miles per ringgit on fashion. Issued to women only." },
+
+  { id: "uob-lazada", bank: "UOB", name: "Lazada Card", net: "Platinum MC",
+    conv: "uobStd", fee: 195, waiver: { t: "swipes", v: 12 }, income: 30000,
+    base: { u: "pts", rate: 1 },
+    rules: [{ cats: ["onlineLocal", "insurance", "utilities"], u: "pts", rate: 4, cap: 6000, label: "Boosted rate on Lazada, insurance and telco" }],
+    capTotal: null, fx: 2.25, lounge: null, ins: 0, excl: ["education"], verified: "2026-05", signup: NOSIGN,
+    note: "About 0.36 miles per ringgit. Caps of roughly RM500 each for insurance and telco, Lazada, and selected online spend." },
+
+  { id: "ocbc-titanium", bank: "OCBC", name: "Titanium Mastercard", net: "Titanium MC",
+    conv: "ocbc", fee: 200, waiver: { t: "swipes", v: 12 }, income: 36000,
+    base: { u: "pts", rate: 1 },
+    rules: [{ cats: ["dining", "onlineLocal", "onlineOs", "overseasRet"], u: "pts", rate: 5, cap: 10000, label: "5x dining, online and overseas" }],
+    capTotal: null, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+
+  { id: "ocbc-cashflo", bank: "OCBC", name: "Cashflo Mastercard", net: "Platinum MC",
+    conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 36000,
+    base: { u: "cb", rate: 1.00 }, rules: [],
+    capTotal: 50, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN,
+    note: "Converts larger purchases to instalments automatically. A cash-flow tool more than a rewards card." },
+
+  { id: "ocbc-great-eastern", bank: "OCBC", name: "Great Eastern Platinum", net: "Visa Platinum",
+    conv: "ocbc", fee: 250, waiver: { t: "swipes", v: 12 }, income: 36000,
+    base: { u: "pts", rate: 1 },
+    rules: [{ cats: ["insurance"], u: "pts", rate: 3, label: "3x on Great Eastern premiums" }],
+    capTotal: null, fx: 1.00, lounge: null, ins: 0, excl: ["utilities", "education"], verified: "2026-05", signup: NOSIGN, note: "" },
+
+  { id: "affin-duo", bank: "Affin Bank", name: "Duo Visa & Amex", net: "Visa + Amex",
+    conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 24000,
+    base: { u: "cb", rate: 0.25 },
+    rules: [{ cats: ["*"], u: "cb", rate: 5, cap: 50, wknd: true, label: "5% weekend cashback on the Amex face" }],
+    capTotal: 50, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+
+  { id: "affin-invikta", bank: "Affin Bank", name: "Invikta World Mastercard", net: "World MC",
+    conv: "affin", fee: 600, waiver: { t: "spend", v: 30000 }, income: 150000,
+    base: { u: "pts", rate: 1 },
+    rules: [{ cats: ["onlineOs", "overseasRet", "travelAir", "hotel"], u: "pts", rate: 5, label: "5x overseas and travel" }],
+    capTotal: null, fx: 1.00, lounge: { p: "Plaza Premium", v: 6, g: 0 }, ins: 1000000,
+    excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+
+  { id: "bi-vi", bank: "Bank Islam", name: "Visa Infinite-i", net: "Visa Infinite",
+    conv: "islam", fee: 500, waiver: { t: "spend", v: 30000 }, income: 120000,
+    base: { u: "pts", rate: 1 },
+    rules: [{ cats: ["onlineOs", "overseasRet", "travelAir"], u: "pts", rate: 3, label: "3x overseas and travel" }],
+    capTotal: null, fx: 1.00, lounge: { p: "Plaza Premium", v: 4, g: 0 }, ins: 500000,
+    excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+
+  { id: "bi-plat", bank: "Bank Islam", name: "Platinum Card-i", net: "Visa Platinum",
+    conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 36000,
+    base: { u: "cb", rate: 0.50 },
+    rules: [{ cats: ["petrol", "groceries"], u: "cb", rate: 3, cap: 25, label: "3% petrol and groceries" }],
+    capTotal: 25, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+
+  { id: "br-plat", bank: "Bank Rakyat", name: "Platinum Card-i", net: "Visa Platinum",
+    conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 30000,
+    base: { u: "cb", rate: 0.50 },
+    rules: [{ cats: ["petrol", "groceries", "dining"], u: "cb", rate: 3, cap: 30, min: 1000, label: "3% on everyday categories" }],
+    capTotal: 30, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+
+  { id: "bsn-plat", bank: "BSN", name: "Visa Platinum", net: "Visa Platinum",
+    conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 24000,
+    base: { u: "cb", rate: 0.50 },
+    rules: [{ cats: ["petrol"], u: "cb", rate: 3, cap: 20, label: "3% petrol" }],
+    capTotal: 20, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+
+  { id: "mbsb-plat", bank: "MBSB Bank", name: "Platinum Card-i", net: "Visa Platinum",
+    conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 36000,
+    base: { u: "cb", rate: 0.60 },
+    rules: [{ cats: ["groceries", "dining"], u: "cb", rate: 2, cap: 25, label: "2% groceries and dining" }],
+    capTotal: 25, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+
+  { id: "aeon-gold", bank: "AEON Credit", name: "Gold Visa / Mastercard", net: "Gold",
+    conv: "aeon", fee: 0, waiver: { t: "lifetime" }, income: 18000,
+    base: { u: "pts", rate: 1 },
+    rules: [{ cats: ["groceries", "retail"], u: "pts", rate: 3, label: "3x at AEON stores" }],
+    capTotal: null, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN,
+    note: "Lowest income barrier here, which makes it a reasonable first card for building credit history." },
+
+  { id: "aeon-plat", bank: "AEON Credit", name: "Platinum Visa", net: "Visa Platinum",
+    conv: "aeon", fee: 0, waiver: { t: "lifetime" }, income: 36000,
+    base: { u: "pts", rate: 1 },
+    rules: [{ cats: ["groceries", "retail", "dining"], u: "pts", rate: 5, cap: 8000, label: "5x at AEON and selected merchants" }],
+    capTotal: null, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+];
+
+/* ---------------------------------------------------------------------------
+   6. DEFAULTS
+   Every figure the USER enters starts at zero — the dashboard should never
+   show anyone else's guess about your spending. The valuation constants below
+   (mile values, service tax, lounge value) are model parameters, not "your"
+   figures, so they keep sensible starting points editable in the Valuation tab.
+   ------------------------------------------------------------------------- */
+const DEFAULT_ASSUM = {
+  mile: Object.fromEntries(Object.entries(FFP).map(([k, v]) => [k, v.def])),
+  wkndShare: 0.30,
+  loungeValue: 100,
+  insValue: 150,
+  serviceTax: 25,
+  applyBlock: true,
+  includeSignup: false,
+  horizon: 5,
+  applyDeval: true,
+};
+
+const DEFAULT_PROFILE = {
+  spend: Object.fromEntries(CATS.map((c) => [c.key, 0])),
+  income: 0, maxFee: 0, loungeWanted: 0, flights: 0,
+  paysInFull: true, goal: "any",
+};
+
+/* ---------------------------------------------------------------------------
+   7. FORMATTING — always thousand-separated, 2dp for ringgit
+   ------------------------------------------------------------------------- */
+const fmt = (n) => (Number.isFinite(n) ? n : 0)
+  .toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmt0 = (n) => (Number.isFinite(n) ? n : 0)
+  .toLocaleString("en-MY", { maximumFractionDigits: 0 });
+const fmt4 = (n) => (Number.isFinite(n) ? n : 0)
+  .toLocaleString("en-MY", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+const rm = (n) => `RM ${fmt(n)}`;
+
+/* ---------------------------------------------------------------------------
+   8. POINT VALUATION
+   ------------------------------------------------------------------------- */
+function valueRoutes(convKey, convOverrides, mileVals) {
+  const c = { ...CONV[convKey], ...(convOverrides[convKey] || {}) };
+  const routes = [];
+  if (c.cashPer1 > 0) {
+    routes.push({ key: "cash", label: "Cash or voucher", rm: 1 / c.cashPer1,
+      detail: `${fmt0(c.cashPer1)} points = RM 1.00` });
+  }
+  Object.entries(c.ffp || {}).forEach(([k, ptsPer1000]) => {
+    if (!ptsPer1000 || !FFP[k]) return;
+    const milesPerPoint = 1000 / ptsPer1000;
+    routes.push({
+      key: k, label: `${FFP[k].name} (${FFP[k].airline})`,
+      rm: milesPerPoint * (mileVals[k] ?? FFP[k].def),
+      detail: `${fmt0(ptsPer1000)} points = 1,000 ${FFP[k].name}`,
+    });
+  });
+  routes.sort((a, b) => b.rm - a.rm);
+  return { conv: c, routes, best: routes[0] || { key: "none", label: "No redemption route", rm: 0, detail: "" } };
+}
+
+/* ---------------------------------------------------------------------------
+   9. SCORING ENGINE
+   ------------------------------------------------------------------------- */
+function evaluateCard(card, spend, A, P, convOverrides) {
+  const { conv, best, routes } = valueRoutes(card.conv, convOverrides, A.mile);
+  const pv = best.rm;
+  const excl = new Set(card.excl || []);
+
+  let qualMonth = 0, totalMonth = 0, fxMonth = 0;
+  CATS.forEach((c) => {
+    const amt = spend[c.key] || 0;
+    totalMonth += amt;
+    if (!excl.has(c.key)) qualMonth += amt;
+    if (c.fx) fxMonth += amt;
+  });
+
+  const capUsed = {};
+  let cbMonth = 0, ptsMonth = 0;
+  const perCat = [];
+
+  CATS.forEach((c) => {
+    const amt = spend[c.key] || 0;
+    if (amt <= 0) return;
+    if (excl.has(c.key)) { perCat.push({ cat: c.key, amt, value: 0, rule: "Excluded by issuer" }); return; }
+
+    const active = (card.rules || []).map((r, i) => ({ ...r, _i: i }))
+      .filter((r) => (r.cats.includes("*") || r.cats.includes(c.key)) && (!r.min || qualMonth >= r.min));
+    const wkndRules = active.filter((r) => r.wknd);
+    const anyRules = active.filter((r) => !r.wknd);
+
+    const segs = wkndRules.length
+      ? [{ amt: amt * A.wkndShare, pool: [...wkndRules, ...anyRules] },
+         { amt: amt * (1 - A.wkndShare), pool: anyRules }]
+      : [{ amt, pool: anyRules }];
+
+    let catValue = 0, ruleLabel = "Base rate";
+    const basePerRM = card.base.u === "cb" ? card.base.rate / 100 : card.base.rate * pv;
+
+    segs.forEach((seg) => {
+      let remaining = seg.amt;
+      if (remaining <= 0) return;
+      const ranked = [...seg.pool].sort((a, b) => {
+        const va = a.u === "cb" ? a.rate / 100 : a.rate * pv;
+        const vb = b.u === "cb" ? b.rate / 100 : b.rate * pv;
+        return vb - va;
+      });
+      for (const r of ranked) {
+        if (remaining <= 0) break;
+        const perRM = r.u === "cb" ? r.rate / 100 : r.rate * pv;
+        if (perRM <= basePerRM) continue;
+        const rawFull = r.u === "cb" ? (remaining * r.rate) / 100 : remaining * r.rate;
+        let raw = rawFull;
+        if (r.cap != null) {
+          const used = capUsed[r._i] || 0;
+          raw = Math.min(rawFull, Math.max(0, r.cap - used));
+          capUsed[r._i] = used + raw;
+        }
+        const frac = rawFull > 0 ? raw / rawFull : 0;
+        if (r.u === "cb") { cbMonth += raw; catValue += raw; }
+        else { ptsMonth += raw; catValue += raw * pv; }
+        if (raw > 0) ruleLabel = r.label;
+        remaining -= remaining * frac;
+      }
+      if (remaining > 0) {
+        if (card.base.u === "cb") { const v = (remaining * card.base.rate) / 100; cbMonth += v; catValue += v; }
+        else { const p = remaining * card.base.rate; ptsMonth += p; catValue += p * pv; }
+      }
+    });
+    perCat.push({ cat: c.key, amt, value: catValue, rule: ruleLabel });
+  });
+
+  let capLoss = 0;
+  if (card.capTotal != null && cbMonth > card.capTotal) { capLoss = cbMonth - card.capTotal; cbMonth = card.capTotal; }
+
+  const cbYear = cbMonth * 12;
+  let ptsYear = ptsMonth * 12;
+  const ptsEarned = ptsYear;
+
+  let blockLoss = 0, blocksPerYear = 0;
+  if (ptsYear > 0 && best.key !== "cash" && best.key !== "none") {
+    if (A.applyBlock && conv.block > 1) {
+      blocksPerYear = Math.floor(ptsYear / conv.block);
+      const usable = blocksPerYear * conv.block;
+      blockLoss = (ptsYear - usable) * pv;
+      ptsYear = usable;
+    }
+  }
+  const ptsValue = ptsYear * pv;
+  const milesYear = best.key !== "cash" && best.key !== "none" && conv.ffp[best.key]
+    ? (ptsYear / conv.ffp[best.key]) * 1000 : 0;
+  const mpr = totalMonth * 12 > 0 ? milesYear / (totalMonth * 12) : 0;
+
+  const loungeUsed = card.lounge ? Math.min(P.loungeWanted, card.lounge.v) : 0;
+  const loungeValue = loungeUsed * A.loungeValue;
+  const insValue = card.ins > 0 && P.flights > 0 ? A.insValue : 0;
+
+  const annualQual = qualMonth * 12;
+  let feeCharged = card.fee, waiverNote = "";
+  if (card.waiver.t === "lifetime") { feeCharged = 0; waiverNote = "Waived for life"; }
+  else if (card.waiver.t === "spend") {
+    feeCharged = annualQual >= card.waiver.v ? 0 : card.fee;
+    waiverNote = annualQual >= card.waiver.v
+      ? `Waived, annual spend of ${rm(annualQual)} clears ${rm(card.waiver.v)}`
+      : `Charged, you are ${rm(card.waiver.v - annualQual)} short of the waiver`;
+  } else if (card.waiver.t === "swipes") { feeCharged = 0; waiverNote = `Waived with ${card.waiver.v} swipes a year`; }
+  else { waiverNote = "No waiver available"; }
+
+  const fxCost = (fxMonth * 12 * card.fx) / 100;
+  const convFee = blocksPerYear * (conv.fee || 0);
+  const tax = A.serviceTax;
+
+  const signupValue = A.includeSignup && annualQual >= (card.signup?.minSpend || 0)
+    ? (card.signup?.value || 0) : 0;
+
+  const gross = cbYear + ptsValue + loungeValue + insValue;
+  const costs = feeCharged + tax + fxCost + convFee;
+  const net = gross - costs;
+  const netY1 = net + signupValue;
+
+  const dev = devalFor(card.conv);
+  const rate = A.applyDeval ? dev.annual : 0;
+  const years = [];
+  let cum = 0;
+  for (let y = 1; y <= A.horizon; y++) {
+    const decay = Math.pow(1 - rate, y - 1);
+    const yearNet = (cbYear + ptsValue) * decay + loungeValue + insValue - costs + (y === 1 ? signupValue : 0);
+    cum += yearNet;
+    years.push({ y, net: yearNet, cum });
+  }
+
+  const flags = [];
+  if (P.income < card.income) flags.push(`Income below the RM ${fmt0(card.income)} minimum`);
+  if (card.fee > P.maxFee && feeCharged > 0) flags.push("Annual fee above your ceiling");
+  if (capLoss > 0) flags.push(`Card cap wastes ${rm(capLoss * 12)} of rebate a year`);
+  if (card.waiver.t === "spend" && feeCharged > 0) flags.push("Fee waiver not reached");
+  if (blockLoss > 5) flags.push(`${rm(blockLoss)} stranded below the ${fmt0(conv.block)}-point transfer block`);
+  if (!conv.sourced && ptsValue > 0) flags.push("Conversion rate not sourced to an issuer page");
+  if (ptsEarned > 0 && conv.block > 0 && ptsEarned < conv.block)
+    flags.push(`A year of spending earns ${fmt0(ptsEarned)} points, below the ${fmt0(conv.block)} minimum transfer`);
+
+  return {
+    card, conv, best, routes, pv, net, netY1, gross, cbYear, ptsYear, ptsEarned, ptsValue,
+    milesYear, mpr, loungeValue, insValue, signupValue, feeCharged, tax, fxCost, convFee,
+    costs, capLoss: capLoss * 12, blockLoss, blocksPerYear, waiverNote, perCat, years,
+    devalRate: dev.annual, devalEvents: dev.events, annualQual, loungeUsed, flags,
+    eligible: P.income >= card.income,
+  };
+}
+
+/* ---------------------------------------------------------------------------
+   10. WALLET OPTIMISER — greedy assignment with local-search improvement
+   ------------------------------------------------------------------------- */
+function evaluateWallet(cards, spend, A, P, convOverrides) {
+  const n = cards.length;
+  const assign = Object.fromEntries(CATS.map((c) => [c.key, 0]));
+  const totalFor = (asg) => {
+    let sum = 0;
+    for (let i = 0; i < n; i++) {
+      const sub = Object.fromEntries(CATS.map((c) => [c.key, asg[c.key] === i ? spend[c.key] || 0 : 0]));
+      sum += evaluateCard(cards[i], sub, A, P, convOverrides).net;
+    }
+    return sum;
+  };
+  let best = totalFor(assign);
+  for (let pass = 0; pass < 3; pass++) {
+    let improved = false;
+    for (const c of CATS) {
+      const cur = assign[c.key];
+      for (let i = 0; i < n; i++) {
+        if (i === cur) continue;
+        assign[c.key] = i;
+        const t = totalFor(assign);
+        if (t > best + 0.01) { best = t; improved = true; break; }
+        assign[c.key] = cur;
+      }
+    }
+    if (!improved) break;
+  }
+  const detail = cards.map((cd, i) => {
+    const sub = Object.fromEntries(CATS.map((c) => [c.key, assign[c.key] === i ? spend[c.key] || 0 : 0]));
+    return { ...evaluateCard(cd, sub, A, P, convOverrides),
+             assigned: CATS.filter((c) => assign[c.key] === i).map((c) => c.label) };
+  });
+  return { total: best, detail, assign };
+}
+
+/* ---------------------------------------------------------------------------
+   11. UI PRIMITIVES
+   ------------------------------------------------------------------------- */
+function Field({ label, hint, children }) {
+  return (
+    <label className="block">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-[13px] font-medium text-stone-700 dark:text-zinc-300">{label}</span>
+        {hint && <span className="text-[11px] text-stone-400 dark:text-zinc-500">{hint}</span>}
+      </div>
+      <div className="mt-1">{children}</div>
+    </label>
+  );
+}
+
+function NumInput({ value, onChange, prefix = "RM", step = 50, min = 0 }) {
+  return (
+    <div className="flex items-stretch rounded-md border border-stone-300 bg-white focus-within:border-emerald-700 focus-within:ring-1 focus-within:ring-emerald-700 dark:border-zinc-700 dark:bg-zinc-900 dark:focus-within:border-emerald-500 dark:focus-within:ring-emerald-500">
+      {prefix && <span className="flex items-center px-2 text-[12px] text-stone-400 border-r border-stone-200 dark:text-zinc-500 dark:border-zinc-700">{prefix}</span>}
+      <input type="number" inputMode="decimal" step={step} min={min} value={value}
+        onChange={(e) => onChange(Math.max(min, Number(e.target.value) || 0))}
+        className="w-full min-w-0 px-2 py-2 text-[16px] sm:text-[14px] tabular-nums outline-none bg-transparent text-stone-900 dark:text-zinc-100" />
+    </div>
+  );
+}
+
+function Toggle({ on, onChange, label }) {
+  return (
+    <button onClick={() => onChange(!on)}
+      className={`rounded-full border px-3 py-1.5 text-[12px] transition-colors ${
+        on ? "border-emerald-800 bg-emerald-800 text-white dark:border-emerald-600 dark:bg-emerald-600"
+           : "border-stone-300 text-stone-600 hover:border-stone-400 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-500"}`}>
+      {label}
+    </button>
+  );
+}
+
+function SourceBadge({ conv }) {
+  if (conv.sourced) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-400">
+        <ShieldCheck size={10} /> Sourced {conv.srcDate}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-800 dark:bg-amber-950/50 dark:text-amber-400">
+      <AlertTriangle size={10} /> Not sourced — edit before trusting
+    </span>
+  );
+}
+
+function ValueBar({ e }) {
+  const scale = Math.max(e.gross, e.costs, 1);
+  const w = (v) => `${Math.min(100, (v / scale) * 100)}%`;
+  return (
+    <div className="space-y-1">
+      <div className="flex h-2 w-full overflow-hidden rounded-sm bg-stone-100 dark:bg-zinc-800">
+        <div className="bg-emerald-700 dark:bg-emerald-600" style={{ width: w(e.cbYear + e.ptsValue) }} />
+        <div className="bg-sky-600" style={{ width: w(e.loungeValue + e.insValue) }} />
+      </div>
+      <div className="flex h-2 w-full overflow-hidden rounded-sm bg-stone-100 dark:bg-zinc-800">
+        <div className="bg-rose-400 dark:bg-rose-500" style={{ width: w(e.costs) }} />
+      </div>
+    </div>
+  );
+}
+
+/* Hand-rolled SVG line chart — responsive by viewBox, no chart library. */
+function CumulativeChart({ series, horizon, dark }) {
+  const W = 640, H = 240, PL = 52, PR = 16, PT = 16, PB = 30;
+  const all = series.flatMap((s) => s.years.map((p) => p.cum));
+  const lo = Math.min(0, ...all), hi = Math.max(1, ...all);
+  const x = (y) => PL + ((y - 1) / Math.max(1, horizon - 1)) * (W - PL - PR);
+  const yy = (v) => PT + (1 - (v - lo) / (hi - lo || 1)) * (H - PT - PB);
+  const colors = dark
+    ? ["#34d399", "#38bdf8", "#fbbf24", "#fb7185", "#a5b4fc"]
+    : ["#065f46", "#0369a1", "#b45309", "#9f1239", "#4338ca"];
+  const gridColor = dark ? "#3f3f46" : "#e7e5e4";
+  const textColor = dark ? "#71717a" : "#a8a29e";
+  const zeroColor = dark ? "#a1a1aa" : "#78716c";
+
+  return (
+    <div className="w-full overflow-hidden">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Cumulative net value by year">
+        {[0, 0.25, 0.5, 0.75, 1].map((f) => {
+          const v = lo + f * (hi - lo);
+          return (
+            <g key={f}>
+              <line x1={PL} x2={W - PR} y1={yy(v)} y2={yy(v)} stroke={gridColor} strokeWidth="1" />
+              <text x={PL - 6} y={yy(v) + 3} textAnchor="end" fontSize="9" fill={textColor}>{fmt0(v)}</text>
+            </g>
+          );
+        })}
+        {Array.from({ length: horizon }, (_, i) => i + 1).map((y) => (
+          <text key={y} x={x(y)} y={H - 10} textAnchor="middle" fontSize="9" fill={textColor}>Yr {y}</text>
+        ))}
+        {lo < 0 && <line x1={PL} x2={W - PR} y1={yy(0)} y2={yy(0)} stroke={zeroColor} strokeWidth="1" strokeDasharray="3 3" />}
+        {series.map((s, i) => (
+          <g key={s.label}>
+            <polyline fill="none" stroke={colors[i % colors.length]} strokeWidth="2"
+              points={s.years.map((p) => `${x(p.y)},${yy(p.cum)}`).join(" ")} />
+            {s.years.map((p) => (
+              <circle key={p.y} cx={x(p.y)} cy={yy(p.cum)} r="2.5" fill={colors[i % colors.length]} />
+            ))}
+          </g>
+        ))}
+      </svg>
+      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+        {series.map((s, i) => (
+          <span key={s.label} className="flex items-center gap-1.5 text-[11px] text-stone-600 dark:text-zinc-400">
+            <i className="h-2 w-3 rounded-sm" style={{ background: colors[i % colors.length] }} />
+            {s.label}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------------------
+   12. THEME TOGGLE
+   ------------------------------------------------------------------------- */
+function useTheme() {
+  const [dark, setDark] = useState(() => {
+    try {
+      const saved = localStorage.getItem("cc-theme");
+      if (saved) return saved === "dark";
+      return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    } catch { return false; }
+  });
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", dark);
+    try { localStorage.setItem("cc-theme", dark ? "dark" : "light"); } catch {}
+  }, [dark]);
+  return [dark, setDark];
+}
+
+/* ---------------------------------------------------------------------------
+   13. MAIN COMPONENT
+   ------------------------------------------------------------------------- */
+function CreditCardDashboard() {
+  const [dark, setDark] = useTheme();
+  const [tab, setTab] = useState("rank");
+  const [profile, setProfile] = useState(DEFAULT_PROFILE);
+  const [assum, setAssum] = useState(DEFAULT_ASSUM);
+  const [convOverrides, setConvOverrides] = useState({});
+  const [expanded, setExpanded] = useState(null);
+  const [compare, setCompare] = useState([]);
+  const [query, setQuery] = useState("");
+  const [bankFilter, setBankFilter] = useState("All");
+  const [onlyEligible, setOnlyEligible] = useState(false);
+  const [walletSize, setWalletSize] = useState(2);
+  const [redeem, setRedeem] = useState({ miles: 90000, cash: 4200, taxes: 400, ffp: "krisflyer" });
+
+  const setSpend = (k, v) => setProfile((p) => ({ ...p, spend: { ...p.spend, [k]: v } }));
+  const setConvField = (key, field, ffpKey, val) =>
+    setConvOverrides((o) => {
+      const cur = { ...CONV[key], ...(o[key] || {}) };
+      const next = ffpKey
+        ? { ...cur, ffp: { ...cur.ffp, [ffpKey]: val } }
+        : { ...cur, [field]: val };
+      return { ...o, [key]: next };
+    });
+
+  const monthlyTotal = useMemo(
+    () => CATS.reduce((s, c) => s + (profile.spend[c.key] || 0), 0), [profile.spend]);
+
+  const ranked = useMemo(() => {
+    let list = CARDS.map((c) => evaluateCard(c, profile.spend, assum, profile, convOverrides));
+    if (onlyEligible) list = list.filter((e) => e.eligible);
+    if (profile.goal === "cash") list = list.filter((e) => e.best.key === "cash");
+    if (profile.goal === "miles") list = list.filter((e) => e.best.key !== "cash" && e.best.key !== "none");
+    return list.sort((a, b) => (assum.includeSignup ? b.netY1 - a.netY1 : b.net - a.net));
+  }, [profile, assum, onlyEligible, convOverrides]);
+
+  const bestCard = ranked[0];
+
+  const wallet = useMemo(() => {
+    const pool = ranked.slice(0, 8).map((e) => e.card);
+    if (pool.length < walletSize) return null;
+    const combos = [];
+    const build = (start, cur) => {
+      if (cur.length === walletSize) { combos.push([...cur]); return; }
+      for (let i = start; i < pool.length; i++) { cur.push(pool[i]); build(i + 1, cur); cur.pop(); }
+    };
+    build(0, []);
+    let bestW = null;
+    combos.forEach((cmb) => {
+      const r = evaluateWallet(cmb, profile.spend, assum, profile, convOverrides);
+      if (!bestW || r.total > bestW.total) bestW = { ...r, cards: cmb };
+    });
+    return bestW;
+  }, [ranked, walletSize, profile, assum, convOverrides]);
+
+  const banks = useMemo(() => ["All", ...new Set(CARDS.map((c) => c.bank))], []);
+  const dbList = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return CARDS.filter((c) =>
+      (bankFilter === "All" || c.bank === bankFilter) &&
+      (!q || `${c.bank} ${c.name} ${c.net}`.toLowerCase().includes(q)));
+  }, [query, bankFilter]);
+
+  const toggleCompare = (id) =>
+    setCompare((c) => (c.includes(id) ? c.filter((x) => x !== id) : c.length < 3 ? [...c, id] : c));
+
+  const impliedMile = useMemo(() => {
+    const net = redeem.cash - redeem.taxes;
+    return redeem.miles > 0 ? net / redeem.miles : 0;
+  }, [redeem]);
+
+  const TABS = [
+    { k: "profile", label: "Spending",   icon: SlidersHorizontal },
+    { k: "rank",    label: "Ranking",    icon: Trophy },
+    { k: "years",   label: "Multi-year", icon: TrendingDown },
+    { k: "wallet",  label: "Wallet",     icon: Wallet },
+    { k: "compare", label: "Compare",    icon: Layers },
+    { k: "db",      label: "Cards",      icon: Database },
+    { k: "assum",   label: "Valuation",  icon: Settings2 },
+  ];
+
+  const unsourcedCount = new Set(CARDS.map((c) => c.conv)).size
+    - Object.values(CONV).filter((c) => c.sourced).length;
+
+  return (
+    <div className="min-h-screen bg-stone-50 text-stone-900 antialiased dark:bg-zinc-950 dark:text-zinc-100">
+      {/* ---------------- HEADER ---------------- */}
+      <header className="sticky top-0 z-30 border-b border-stone-200 bg-white/95 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
+        <div className="mx-auto flex max-w-[1440px] items-center gap-3 px-4 py-3">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-emerald-800 text-white dark:bg-emerald-600">
+            <Wallet size={16} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-[15px] font-semibold leading-tight">Malaysian credit card optimiser</h1>
+            <p className="truncate text-[11px] text-stone-500 dark:text-zinc-400">
+              {rm(monthlyTotal)} a month · {assum.includeSignup ? "year one, sign-up bonuses included" : "steady state, no sign-up bonuses"}
+            </p>
+          </div>
+          <button onClick={() => setDark((d) => !d)}
+            aria-label="Toggle dark mode"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-stone-300 text-stone-600 hover:border-stone-400 dark:border-zinc-700 dark:text-zinc-300 dark:hover:border-zinc-500">
+            {dark ? <Sun size={15} /> : <Moon size={15} />}
+          </button>
+          {bestCard && (
+            <div className="hidden sm:block shrink-0 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-right dark:border-emerald-900 dark:bg-emerald-950/40">
+              <div className="text-[10px] text-emerald-800/70 dark:text-emerald-400/70">Top card</div>
+              <div className="text-[13px] font-semibold text-emerald-900 dark:text-emerald-300">{bestCard.card.bank} {bestCard.card.name}</div>
+              <div className="text-[12px] tabular-nums text-emerald-800 dark:text-emerald-400">
+                {rm(assum.includeSignup ? bestCard.netY1 : bestCard.net)} a year
+              </div>
+            </div>
+          )}
+        </div>
+        {bestCard && (
+          <div className="sm:hidden border-t border-emerald-100 bg-emerald-50 px-4 py-2 dark:border-emerald-900 dark:bg-emerald-950/40">
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="truncate text-[12px] font-medium text-emerald-900 dark:text-emerald-300">{bestCard.card.bank} {bestCard.card.name}</span>
+              <span className="shrink-0 text-[13px] font-semibold tabular-nums text-emerald-800 dark:text-emerald-400">
+                {rm(assum.includeSignup ? bestCard.netY1 : bestCard.net)}/yr
+              </span>
+            </div>
+          </div>
+        )}
+      </header>
+
+      <div className="mx-auto flex max-w-[1440px]">
+        {/* ---------------- DESKTOP RAIL ---------------- */}
+        <nav className="hidden md:flex w-52 shrink-0 flex-col gap-0.5 border-r border-stone-200 p-3 dark:border-zinc-800">
+          {TABS.map((t) => (
+            <button key={t.k} onClick={() => setTab(t.k)}
+              className={`flex items-center gap-2.5 rounded-md px-3 py-2 text-left text-[13px] transition-colors ${
+                tab === t.k ? "bg-emerald-800 text-white dark:bg-emerald-600"
+                            : "text-stone-600 hover:bg-stone-100 dark:text-zinc-400 dark:hover:bg-zinc-900"}`}>
+              <t.icon size={15} /> {t.label}
+            </button>
+          ))}
+          <div className="mt-4 rounded-md border border-stone-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="text-[11px] font-medium text-stone-700 dark:text-zinc-300">Data provenance</div>
+            <p className="mt-1 text-[11px] leading-relaxed text-stone-500 dark:text-zinc-500">
+              Conversion tables for Maybank, CIMB and UOB come from published issuer schedules
+              and are marked with a green badge. {unsourcedCount} programmes are not yet sourced
+              and carry an amber badge — edit those in the Valuation tab before you rely on them.
+            </p>
+          </div>
+        </nav>
+
+        {/* ---------------- MAIN ---------------- */}
+        <main className="min-w-0 flex-1 px-4 pb-24 pt-4 md:pb-8">
+
+          {/* ===== SPENDING ===== */}
+          {tab === "profile" && (
+            <section className="space-y-5">
+              <div>
+                <h2 className="text-[17px] font-semibold">Your monthly spending</h2>
+                <p className="mt-1 max-w-[60ch] text-[13px] text-stone-600 dark:text-zinc-400">
+                  Enter what you actually put on a card each month. Cash and bank transfers don't count.
+                  Everything starts at zero — nothing here is a guess about your spending.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {CATS.map((c) => (
+                  <div key={c.key} className="rounded-lg border border-stone-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
+                    <Field label={c.label} hint={c.fx ? "foreign currency" : undefined}>
+                      <NumInput value={profile.spend[c.key]} onChange={(v) => setSpend(c.key, v)} />
+                    </Field>
+                    <div className="mt-2 flex gap-1">
+                      {[0, 250, 500, 1000, 2000].map((v) => (
+                        <button key={v} onClick={() => setSpend(c.key, v)}
+                          className="flex-1 rounded border border-stone-200 py-1 text-[11px] tabular-nums text-stone-600 hover:border-emerald-700 hover:text-emerald-800 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-emerald-500 dark:hover:text-emerald-400">
+                          {v >= 1000 ? `${v / 1000}k` : v}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="rounded-lg border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                <h3 className="text-[14px] font-semibold">Constraints and preferences</h3>
+                <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <Field label="Annual income" hint="eligibility check">
+                    <NumInput value={profile.income} step={6000} onChange={(v) => setProfile((p) => ({ ...p, income: v }))} />
+                  </Field>
+                  <Field label="Annual fee ceiling" hint="per card">
+                    <NumInput value={profile.maxFee} step={100} onChange={(v) => setProfile((p) => ({ ...p, maxFee: v }))} />
+                  </Field>
+                  <Field label="Lounge visits you'd use" hint="per year">
+                    <NumInput prefix="" value={profile.loungeWanted} step={1} onChange={(v) => setProfile((p) => ({ ...p, loungeWanted: v }))} />
+                  </Field>
+                  <Field label="Trips flown" hint="per year">
+                    <NumInput prefix="" value={profile.flights} step={1} onChange={(v) => setProfile((p) => ({ ...p, flights: v }))} />
+                  </Field>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {[{ k: "any", label: "Show everything" },
+                    { k: "cash", label: "Cash redemption only" },
+                    { k: "miles", label: "Miles-capable only" }].map((g) => (
+                    <Toggle key={g.k} on={profile.goal === g.k} label={g.label}
+                      onChange={() => setProfile((p) => ({ ...p, goal: g.k }))} />
+                  ))}
+                  <Toggle on={onlyEligible} onChange={setOnlyEligible}
+                    label={onlyEligible ? "Hiding cards I can't get" : "Showing all income tiers"} />
+                  <Toggle on={assum.includeSignup}
+                    onChange={(v) => setAssum((a) => ({ ...a, includeSignup: v }))}
+                    label={assum.includeSignup ? "Year-1 sign-up bonuses on" : "Sign-up bonuses off"} />
+                </div>
+                <label className="mt-3 flex items-center gap-2 text-[12px] text-stone-600 dark:text-zinc-400">
+                  <input type="checkbox" checked={profile.paysInFull}
+                    onChange={(e) => setProfile((p) => ({ ...p, paysInFull: e.target.checked }))}
+                    className="h-4 w-4 accent-emerald-800 dark:accent-emerald-500" />
+                  I pay my statement in full every month
+                </label>
+                {!profile.paysInFull && (
+                  <p className="mt-3 rounded border border-rose-200 bg-rose-50 p-2 text-[12px] text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-400">
+                    Carrying a balance at 15% to 18% a year swamps every reward modelled here.
+                    Choose on interest rate instead and ignore this ranking.
+                  </p>
+                )}
+              </div>
+            </section>
+          )}
+
+          {/* ===== RANKING ===== */}
+          {tab === "rank" && (
+            <section className="space-y-3">
+              <div className="flex items-baseline justify-between gap-3">
+                <h2 className="text-[17px] font-semibold">
+                  Ranked by {assum.includeSignup ? "year-one" : "steady-state"} net value
+                </h2>
+                <span className="text-[12px] text-stone-500 dark:text-zinc-500">{ranked.length} cards</span>
+              </div>
+              <div className="flex flex-wrap gap-3 text-[11px] text-stone-600 dark:text-zinc-400">
+                <span className="flex items-center gap-1.5"><i className="h-2 w-4 rounded-sm bg-emerald-700 dark:bg-emerald-600" /> Rewards</span>
+                <span className="flex items-center gap-1.5"><i className="h-2 w-4 rounded-sm bg-sky-600" /> Lounge and insurance</span>
+                <span className="flex items-center gap-1.5"><i className="h-2 w-4 rounded-sm bg-rose-400 dark:bg-rose-500" /> Fees, tax and FX</span>
+              </div>
+
+              <div className="space-y-2">
+                {ranked.map((e, i) => {
+                  const open = expanded === e.card.id;
+                  const shown = assum.includeSignup ? e.netY1 : e.net;
+                  return (
+                    <article key={e.card.id} className="overflow-hidden rounded-lg border border-stone-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+                      <button onClick={() => setExpanded(open ? null : e.card.id)}
+                        className="flex w-full items-start gap-3 p-3 text-left hover:bg-stone-50 dark:hover:bg-zinc-800/50">
+                        <span className="mt-0.5 w-6 shrink-0 text-[13px] font-semibold tabular-nums text-stone-400 dark:text-zinc-500">{i + 1}</span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-baseline gap-x-2">
+                            <span className="text-[13px] font-semibold">{e.card.bank}</span>
+                            <span className="text-[13px] text-stone-700 dark:text-zinc-300">{e.card.name}</span>
+                          </div>
+                          <div className="mt-0.5 text-[11px] text-stone-500 dark:text-zinc-500">
+                            {e.card.net} · Best route: {e.best.label}
+                            {e.mpr > 0.001 && ` · ${fmt(e.mpr)} miles per ringgit`}
+                          </div>
+                          <div className="mt-2 max-w-md"><ValueBar e={e} /></div>
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            <SourceBadge conv={e.conv} />
+                            {e.flags.map((f, k) => (
+                              <span key={k} className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-800 dark:bg-amber-950/50 dark:text-amber-400">{f}</span>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <div className={`text-[15px] font-semibold tabular-nums ${shown >= 0 ? "text-emerald-800 dark:text-emerald-400" : "text-rose-700 dark:text-rose-400"}`}>
+                            {rm(shown)}
+                          </div>
+                          <div className="text-[10px] text-stone-500 dark:text-zinc-500">
+                            {assum.includeSignup ? "year one" : "net per year"}
+                          </div>
+                          <div className="mt-1 flex justify-end">
+                            {open ? <ChevronDown size={14} className="text-stone-400 dark:text-zinc-500" /> : <ChevronRight size={14} className="text-stone-400 dark:text-zinc-500" />}
+                          </div>
+                        </div>
+                      </button>
+
+                      {open && (
+                        <div className="border-t border-stone-200 bg-stone-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
+                          <div className="grid gap-4 lg:grid-cols-2">
+                            <div>
+                              <h4 className="text-[12px] font-semibold text-stone-700 dark:text-zinc-300">Where the value comes from</h4>
+                              <table className="mt-2 w-full text-[12px]">
+                                <tbody className="divide-y divide-stone-200 dark:divide-zinc-800">
+                                  <tr><td className="py-1">Cashback</td><td className="py-1 text-right tabular-nums">{rm(e.cbYear)}</td></tr>
+                                  <tr>
+                                    <td className="py-1">
+                                      Points value
+                                      <div className="text-[10px] text-stone-400 dark:text-zinc-500">
+                                        {fmt0(e.ptsEarned)} earned, {fmt0(e.ptsYear)} usable at {fmt4(e.pv)} per point
+                                      </div>
+                                    </td>
+                                    <td className="py-1 text-right tabular-nums">{rm(e.ptsValue)}</td>
+                                  </tr>
+                                  <tr><td className="py-1">Lounge ({e.loungeUsed} visits)</td><td className="py-1 text-right tabular-nums">{rm(e.loungeValue)}</td></tr>
+                                  <tr><td className="py-1">Travel insurance</td><td className="py-1 text-right tabular-nums">{rm(e.insValue)}</td></tr>
+                                  <tr className="font-medium"><td className="py-1">Gross value</td><td className="py-1 text-right tabular-nums">{rm(e.gross)}</td></tr>
+                                  <tr><td className="py-1 text-rose-700 dark:text-rose-400">Annual fee</td><td className="py-1 text-right tabular-nums text-rose-700 dark:text-rose-400">−{fmt(e.feeCharged)}</td></tr>
+                                  <tr><td className="py-1 text-rose-700 dark:text-rose-400">Service tax</td><td className="py-1 text-right tabular-nums text-rose-700 dark:text-rose-400">−{fmt(e.tax)}</td></tr>
+                                  <tr><td className="py-1 text-rose-700 dark:text-rose-400">FX markup ({fmt(e.card.fx)}%)</td><td className="py-1 text-right tabular-nums text-rose-700 dark:text-rose-400">−{fmt(e.fxCost)}</td></tr>
+                                  <tr><td className="py-1 text-rose-700 dark:text-rose-400">Transfer fees ({e.blocksPerYear} transfers)</td><td className="py-1 text-right tabular-nums text-rose-700 dark:text-rose-400">−{fmt(e.convFee)}</td></tr>
+                                  <tr className="border-t-2 border-stone-300 font-semibold dark:border-zinc-700">
+                                    <td className="py-1.5">Steady-state net</td><td className="py-1.5 text-right tabular-nums">{rm(e.net)}</td>
+                                  </tr>
+                                  {e.card.signup?.value > 0 && (
+                                    <tr className="text-emerald-800 dark:text-emerald-400">
+                                      <td className="py-1">
+                                        Year-one sign-up bonus
+                                        <div className="text-[10px] text-stone-400 dark:text-zinc-500">{e.card.signup.desc}</div>
+                                      </td>
+                                      <td className="py-1 text-right tabular-nums">
+                                        {assum.includeSignup ? `+${fmt(e.signupValue)}` : `(${fmt(e.card.signup.value)} excluded)`}
+                                      </td>
+                                    </tr>
+                                  )}
+                                </tbody>
+                              </table>
+                              <p className="mt-2 text-[11px] text-stone-500 dark:text-zinc-500">{e.waiverNote}</p>
+                              {e.card.note && (
+                                <p className="mt-2 rounded border border-stone-200 bg-white p-2 text-[11px] text-stone-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">{e.card.note}</p>
+                              )}
+                            </div>
+
+                            <div className="space-y-3">
+                              <div>
+                                <h4 className="text-[12px] font-semibold text-stone-700 dark:text-zinc-300">Redemption routes on this card</h4>
+                                <div className="mt-1 text-[10px] text-stone-400 dark:text-zinc-500">{e.conv.label}</div>
+                                <table className="mt-1.5 w-full text-[11px]">
+                                  <tbody className="divide-y divide-stone-100 dark:divide-zinc-800">
+                                    {e.routes.map((r) => (
+                                      <tr key={r.key} className={r.key === e.best.key ? "font-medium" : "text-stone-500 dark:text-zinc-500"}>
+                                        <td className="py-1">
+                                          {r.label}
+                                          <div className="text-[10px] text-stone-400 dark:text-zinc-500">{r.detail}</div>
+                                        </td>
+                                        <td className="py-1 text-right tabular-nums">{fmt4(r.rm)} / pt</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                                {e.conv.note && <p className="mt-1.5 text-[10px] text-stone-500 dark:text-zinc-500">{e.conv.note}</p>}
+                                {e.conv.src?.startsWith("http") && (
+                                  <a href={e.conv.src} target="_blank" rel="noreferrer"
+                                    className="mt-1.5 inline-flex items-center gap-1 text-[10px] text-emerald-800 hover:underline dark:text-emerald-400">
+                                    Issuer schedule <ExternalLink size={9} />
+                                  </a>
+                                )}
+                              </div>
+
+                              <div>
+                                <h4 className="text-[12px] font-semibold text-stone-700 dark:text-zinc-300">Category by category</h4>
+                                <div className="mt-1.5 overflow-x-auto">
+                                  <table className="w-full min-w-[280px] text-[11px]">
+                                    <thead className="text-[10px] text-stone-500 dark:text-zinc-500">
+                                      <tr className="border-b border-stone-200 dark:border-zinc-800">
+                                        <th className="py-1 text-left font-medium">Category</th>
+                                        <th className="py-1 text-right font-medium">Spend</th>
+                                        <th className="py-1 text-right font-medium">Earns a year</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-stone-100 dark:divide-zinc-800">
+                                      {e.perCat.map((pc) => (
+                                        <tr key={pc.cat}>
+                                          <td className="py-1">
+                                            <div>{CATS.find((c) => c.key === pc.cat)?.label}</div>
+                                            <div className="text-[10px] text-stone-400 dark:text-zinc-500">{pc.rule}</div>
+                                          </td>
+                                          <td className="py-1 text-right tabular-nums text-stone-500 dark:text-zinc-500">{fmt(pc.amt)}</td>
+                                          <td className={`py-1 text-right tabular-nums ${pc.value > 0 ? "" : "text-stone-300 dark:text-zinc-700"}`}>
+                                            {fmt(pc.value * 12)}
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                                <div className="mt-2 flex items-center gap-2">
+                                  <button onClick={() => toggleCompare(e.card.id)}
+                                    className={`rounded border px-2.5 py-1 text-[11px] ${
+                                      compare.includes(e.card.id) ? "border-emerald-800 bg-emerald-800 text-white dark:border-emerald-600 dark:bg-emerald-600"
+                                        : "border-stone-300 text-stone-600 hover:border-stone-400 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-500"}`}>
+                                    {compare.includes(e.card.id) ? "In comparison" : "Add to comparison"}
+                                  </button>
+                                  <span className="text-[10px] text-stone-400 dark:text-zinc-500">Card terms checked {e.card.verified}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {/* ===== MULTI-YEAR ===== */}
+          {tab === "years" && (
+            <section className="space-y-4">
+              <div>
+                <h2 className="text-[17px] font-semibold">Cumulative value over {assum.horizon} years</h2>
+                <p className="mt-1 max-w-[65ch] text-[13px] text-stone-600 dark:text-zinc-400">
+                  Sign-up bonuses land once and never repeat. Rewards decay as programmes devalue.
+                  Fees, tax and lounge value stay flat. Over a long hold, those three forces decide
+                  the winner, and it is often not the card that wins year one.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Toggle on={assum.applyDeval} onChange={(v) => setAssum((a) => ({ ...a, applyDeval: v }))}
+                  label={assum.applyDeval ? "Devaluation priced in" : "Devaluation ignored"} />
+                <Toggle on={assum.includeSignup} onChange={(v) => setAssum((a) => ({ ...a, includeSignup: v }))}
+                  label={assum.includeSignup ? "Sign-up bonuses in year 1" : "Sign-up bonuses excluded"} />
+                {[3, 5, 10].map((h) => (
+                  <Toggle key={h} on={assum.horizon === h} label={`${h} years`}
+                    onChange={() => setAssum((a) => ({ ...a, horizon: h }))} />
+                ))}
+              </div>
+
+              <div className="rounded-lg border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                <CumulativeChart horizon={assum.horizon} dark={dark}
+                  series={ranked.slice(0, 5).map((e) => ({
+                    label: `${e.card.bank} ${e.card.name}`, years: e.years,
+                  }))} />
+              </div>
+
+              <div className="overflow-x-auto rounded-lg border border-stone-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+                <table className="w-full text-[12px]">
+                  <thead>
+                    <tr className="border-b border-stone-200 text-[11px] text-stone-500 dark:border-zinc-800 dark:text-zinc-500">
+                      <th className="sticky left-0 z-10 bg-white p-2 text-left font-medium dark:bg-zinc-900">Card</th>
+                      <th className="p-2 text-right font-medium">Year 1</th>
+                      <th className="p-2 text-right font-medium">Year {assum.horizon}</th>
+                      <th className="p-2 text-right font-medium">Cumulative</th>
+                      <th className="p-2 text-right font-medium">Deval rate</th>
+                      <th className="p-2 text-left font-medium">Observed devaluation</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-stone-100 dark:divide-zinc-800">
+                    {ranked.slice(0, 12).map((e) => (
+                      <tr key={e.card.id}>
+                        <td className="sticky left-0 z-10 bg-white p-2 dark:bg-zinc-900">
+                          <div className="font-medium">{e.card.bank}</div>
+                          <div className="text-stone-600 dark:text-zinc-400">{e.card.name}</div>
+                        </td>
+                        <td className="p-2 text-right tabular-nums">{fmt(e.years[0].net)}</td>
+                        <td className="p-2 text-right tabular-nums">{fmt(e.years[e.years.length - 1].net)}</td>
+                        <td className="p-2 text-right font-semibold tabular-nums">{fmt(e.years[e.years.length - 1].cum)}</td>
+                        <td className="p-2 text-right tabular-nums text-stone-500 dark:text-zinc-500">{fmt(e.devalRate * 100)}%</td>
+                        <td className="p-2 text-[11px] text-stone-500 dark:text-zinc-500">
+                          {e.devalEvents.length ? e.devalEvents[0] : "No recorded event"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="rounded-lg border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                <h3 className="text-[14px] font-semibold">Devaluation rates and where they come from</h3>
+                <p className="mt-1 text-[12px] text-stone-600 dark:text-zinc-400">
+                  Rates are annualised from dated events, not invented. Adjust any of them.
+                </p>
+                <div className="mt-3 space-y-2">
+                  {Object.entries(DEVAL).filter(([k]) => k !== "_default").map(([k, d]) => (
+                    <div key={k} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-stone-100 pb-2 dark:border-zinc-800">
+                      <span className="text-[12px] font-medium">{CONV[k]?.label || k}</span>
+                      <span className="text-[12px] tabular-nums text-rose-700 dark:text-rose-400">−{fmt(d.annual * 100)}% a year</span>
+                      <span className="flex-1 text-[11px] text-stone-500 dark:text-zinc-500">{d.events[0] || ""}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* ===== WALLET ===== */}
+          {tab === "wallet" && (
+            <section className="space-y-4">
+              <div>
+                <h2 className="text-[17px] font-semibold">Best combination of cards</h2>
+                <p className="mt-1 max-w-[60ch] text-[13px] text-stone-600 dark:text-zinc-400">
+                  Each category is routed to whichever card in the set pays most for it, after caps.
+                  Fees are charged for every card you hold.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                {[1, 2, 3].map((n) => (
+                  <Toggle key={n} on={walletSize === n} label={`${n} card${n > 1 ? "s" : ""}`} onChange={() => setWalletSize(n)} />
+                ))}
+              </div>
+              {wallet && (
+                <>
+                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900 dark:bg-emerald-950/40">
+                    <div className="text-[11px] text-emerald-800/70 dark:text-emerald-400/70">Combined net annual value</div>
+                    <div className="text-[24px] font-semibold tabular-nums text-emerald-900 dark:text-emerald-300">{rm(wallet.total)}</div>
+                    {bestCard && (
+                      <div className="mt-1 text-[12px] text-emerald-800 dark:text-emerald-400">
+                        {rm(wallet.total - bestCard.net)} more than the single best card
+                      </div>
+                    )}
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                    {wallet.detail.map((d) => (
+                      <div key={d.card.id} className="rounded-lg border border-stone-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
+                        <div className="text-[13px] font-semibold">{d.card.bank}</div>
+                        <div className="text-[13px] text-stone-700 dark:text-zinc-300">{d.card.name}</div>
+                        <div className="mt-2 text-[15px] font-semibold tabular-nums text-emerald-800 dark:text-emerald-400">{rm(d.net)}</div>
+                        <div className="mt-2 text-[11px] font-medium text-stone-500 dark:text-zinc-500">Put on this card</div>
+                        <ul className="mt-1 space-y-0.5">
+                          {d.assigned.length === 0 && <li className="text-[11px] text-stone-400 dark:text-zinc-600">Nothing — drop this card</li>}
+                          {d.assigned.map((a) => (
+                            <li key={a} className="flex items-start gap-1.5 text-[11px] text-stone-700 dark:text-zinc-300">
+                              <Check size={11} className="mt-0.5 shrink-0 text-emerald-700 dark:text-emerald-500" />{a}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </section>
+          )}
+
+          {/* ===== COMPARE ===== */}
+          {tab === "compare" && (
+            <section className="space-y-4">
+              <h2 className="text-[17px] font-semibold">Side by side</h2>
+              {compare.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-stone-300 p-8 text-center dark:border-zinc-700">
+                  <p className="text-[13px] text-stone-500 dark:text-zinc-500">
+                    Nothing selected. Open a card in the ranking and choose "Add to comparison".
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto rounded-lg border border-stone-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+                  <table className="w-full text-[12px]">
+                    <thead>
+                      <tr className="border-b border-stone-200 dark:border-zinc-800">
+                        <th className="sticky left-0 z-10 bg-white p-2 text-left font-medium text-stone-500 dark:bg-zinc-900 dark:text-zinc-500">Attribute</th>
+                        {compare.map((id) => {
+                          const c = CARDS.find((x) => x.id === id);
+                          return (
+                            <th key={id} className="min-w-[160px] p-2 text-left align-top">
+                              <div className="flex items-start justify-between gap-1">
+                                <div>
+                                  <div className="font-semibold">{c.bank}</div>
+                                  <div className="font-normal text-stone-600 dark:text-zinc-400">{c.name}</div>
+                                </div>
+                                <button onClick={() => toggleCompare(id)} className="text-stone-400 hover:text-rose-600 dark:text-zinc-500 dark:hover:text-rose-400"><X size={13} /></button>
+                              </div>
+                            </th>
+                          );
+                        })}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-100 dark:divide-zinc-800">
+                      {[
+                        ["Steady-state net value", (e) => rm(e.net)],
+                        ["Year-one net value", (e) => rm(e.netY1)],
+                        [`Cumulative over ${assum.horizon} years`, (e) => rm(e.years[e.years.length - 1].cum)],
+                        ["Miles per ringgit", (e) => (e.mpr > 0 ? fmt(e.mpr) : "—")],
+                        ["Best redemption route", (e) => e.best.label],
+                        ["Value of one point", (e) => `RM ${fmt4(e.pv)}`],
+                        ["Conversion ratio", (e) => e.best.detail || "—"],
+                        ["Minimum transfer block", (e) => (e.conv.block ? `${fmt0(e.conv.block)} points` : "None")],
+                        ["Transfer fee", (e) => rm(e.conv.fee || 0)],
+                        ["Points expiry", (e) => (e.conv.expiry ? `${e.conv.expiry} months` : "None")],
+                        ["Rate sourced to issuer", (e) => (e.conv.sourced ? `Yes, ${e.conv.srcDate}` : "No — verify")],
+                        ["Devaluation priced in", (e) => `${fmt(e.devalRate * 100)}% a year`],
+                        ["Annual fee charged", (e) => rm(e.feeCharged)],
+                        ["Fee waiver", (e) => e.waiverNote],
+                        ["FX markup", (e) => `${fmt(e.card.fx)}%`],
+                        ["Minimum income", (e) => `RM ${fmt0(e.card.income)}`],
+                        ["Lounge", (e) => (e.card.lounge ? `${e.card.lounge.p}, ${e.card.lounge.v} visits` : "—")],
+                        ["Travel insurance", (e) => (e.card.ins ? `RM ${fmt0(e.card.ins)}` : "—")],
+                        ["Sign-up bonus", (e) => (e.card.signup?.value ? `${rm(e.card.signup.value)} after ${rm(e.card.signup.minSpend)}` : "—")],
+                        ["Excluded from earning", (e) => (e.card.excl || []).map((k) => CATS.find((c) => c.key === k)?.label).join(", ") || "—"],
+                      ].map(([label, fn]) => (
+                        <tr key={label}>
+                          <td className="sticky left-0 z-10 bg-white p-2 font-medium text-stone-600 dark:bg-zinc-900 dark:text-zinc-400">{label}</td>
+                          {compare.map((id) => {
+                            const e = evaluateCard(CARDS.find((x) => x.id === id), profile.spend, assum, profile, convOverrides);
+                            return <td key={id} className="p-2 align-top tabular-nums">{fn(e)}</td>;
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* ===== CARD DATABASE ===== */}
+          {tab === "db" && (
+            <section className="space-y-3">
+              <div className="flex items-baseline justify-between gap-3">
+                <h2 className="text-[17px] font-semibold">Card database</h2>
+                <span className="text-[12px] text-stone-500 dark:text-zinc-500">{dbList.length} of {CARDS.length}</span>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <div className="flex flex-1 items-center gap-2 rounded-md border border-stone-300 bg-white px-2 dark:border-zinc-700 dark:bg-zinc-900">
+                  <Search size={14} className="text-stone-400 dark:text-zinc-500" />
+                  <input value={query} onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search bank or card name" className="w-full py-2 text-[16px] sm:text-[13px] outline-none bg-transparent text-stone-900 dark:text-zinc-100" />
+                </div>
+                <select value={bankFilter} onChange={(e) => setBankFilter(e.target.value)}
+                  className="rounded-md border border-stone-300 bg-white px-2 py-2 text-[13px] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100">
+                  {banks.map((b) => <option key={b}>{b}</option>)}
+                </select>
+              </div>
+              <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                {dbList.map((c) => {
+                  const cv = { ...CONV[c.conv], ...(convOverrides[c.conv] || {}) };
+                  return (
+                    <div key={c.id} className="rounded-lg border border-stone-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="text-[13px] font-semibold">{c.bank}</div>
+                          <div className="text-[13px] text-stone-700 dark:text-zinc-300">{c.name}</div>
+                          <div className="mt-0.5 text-[11px] text-stone-500 dark:text-zinc-500">{c.net}</div>
+                        </div>
+                        <button onClick={() => toggleCompare(c.id)}
+                          className={`shrink-0 rounded border px-2 py-1 text-[11px] ${
+                            compare.includes(c.id) ? "border-emerald-800 bg-emerald-800 text-white dark:border-emerald-600 dark:bg-emerald-600"
+                              : "border-stone-300 text-stone-600 dark:border-zinc-700 dark:text-zinc-400"}`}>
+                          {compare.includes(c.id) ? "Added" : "Compare"}
+                        </button>
+                      </div>
+                      <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
+                        <dt className="text-stone-500 dark:text-zinc-500">Annual fee</dt><dd className="text-right tabular-nums">RM {fmt(c.fee)}</dd>
+                        <dt className="text-stone-500 dark:text-zinc-500">Waiver</dt>
+                        <dd className="text-right">
+                          {c.waiver.t === "lifetime" ? "For life" : c.waiver.t === "spend" ? `RM ${fmt0(c.waiver.v)} spend`
+                            : c.waiver.t === "swipes" ? `${c.waiver.v} swipes` : "None"}
+                        </dd>
+                        <dt className="text-stone-500 dark:text-zinc-500">Min income</dt><dd className="text-right tabular-nums">RM {fmt0(c.income)}</dd>
+                        <dt className="text-stone-500 dark:text-zinc-500">Base earn</dt>
+                        <dd className="text-right tabular-nums">
+                          {c.base.u === "cb" ? `${fmt(c.base.rate)}%` : `${fmt(c.base.rate)} pts/RM`}
+                        </dd>
+                        <dt className="text-stone-500 dark:text-zinc-500">FX markup</dt><dd className="text-right tabular-nums">{fmt(c.fx)}%</dd>
+                        <dt className="text-stone-500 dark:text-zinc-500">Lounge</dt>
+                        <dd className="text-right">{c.lounge ? `${c.lounge.v} × ${c.lounge.p}` : "—"}</dd>
+                        <dt className="text-stone-500 dark:text-zinc-500">Sign-up</dt>
+                        <dd className="text-right tabular-nums">{c.signup?.value ? `RM ${fmt(c.signup.value)}` : "—"}</dd>
+                      </dl>
+                      {c.rules.length > 0 && (
+                        <ul className="mt-2 space-y-0.5 border-t border-stone-100 pt-2 dark:border-zinc-800">
+                          {c.rules.map((r, i) => (
+                            <li key={i} className="text-[11px] text-stone-600 dark:text-zinc-400">
+                              {r.label}
+                              {r.cap != null && (
+                                <span className="text-stone-400 dark:text-zinc-500"> · cap {r.u === "cb" ? `RM ${fmt(r.cap)}` : `${fmt0(r.cap)} pts`} a month</span>
+                              )}
+                              {r.min && <span className="text-stone-400 dark:text-zinc-500"> · needs RM {fmt0(r.min)} a month</span>}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        <SourceBadge conv={cv} />
+                        <span className="text-[10px] text-stone-400 dark:text-zinc-500">{cv.label}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {/* ===== VALUATION ===== */}
+          {tab === "assum" && (
+            <section className="space-y-4">
+              <div>
+                <h2 className="text-[17px] font-semibold">Valuation</h2>
+                <p className="mt-1 max-w-[65ch] text-[13px] text-stone-600 dark:text-zinc-400">
+                  Conversion ratios below come from issuer schedules where a green badge appears.
+                  The only thing that cannot be looked up is what a mile is worth to you, because
+                  that depends on the cabin you redeem. Derive it from a real booking rather than guessing.
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                <h3 className="text-[14px] font-semibold">Work out a mile's value from a redemption you'd actually make</h3>
+                <p className="mt-1 text-[12px] text-stone-600 dark:text-zinc-400">
+                  Find a flight you would genuinely book, then enter its cash price, its taxes and
+                  surcharges, and the miles the airline is asking for.
+                </p>
+                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-4">
+                  <Field label="Miles required" hint="award chart">
+                    <NumInput prefix="" value={redeem.miles} step={5000} onChange={(v) => setRedeem((r) => ({ ...r, miles: v }))} />
+                  </Field>
+                  <Field label="Cash price of that ticket">
+                    <NumInput value={redeem.cash} step={100} onChange={(v) => setRedeem((r) => ({ ...r, cash: v }))} />
+                  </Field>
+                  <Field label="Taxes you still pay" hint="on the award">
+                    <NumInput value={redeem.taxes} step={50} onChange={(v) => setRedeem((r) => ({ ...r, taxes: v }))} />
+                  </Field>
+                  <Field label="Programme">
+                    <select value={redeem.ffp} onChange={(e) => setRedeem((r) => ({ ...r, ffp: e.target.value }))}
+                      className="w-full rounded-md border border-stone-300 bg-white px-2 py-2 text-[14px] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100">
+                      {Object.entries(FFP).map(([k, v]) => <option key={k} value={k}>{v.name}</option>)}
+                    </select>
+                  </Field>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-3 rounded border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-900 dark:bg-emerald-950/40">
+                  <div>
+                    <div className="text-[11px] text-emerald-800/70 dark:text-emerald-400/70">Implied value of one {FFP[redeem.ffp].name}</div>
+                    <div className="text-[18px] font-semibold tabular-nums text-emerald-900 dark:text-emerald-300">RM {fmt4(impliedMile)}</div>
+                  </div>
+                  <button onClick={() => setAssum((a) => ({ ...a, mile: { ...a.mile, [redeem.ffp]: Number(impliedMile.toFixed(4)) } }))}
+                    className="rounded-md bg-emerald-800 px-3 py-2 text-[12px] text-white hover:bg-emerald-900 dark:bg-emerald-600 dark:hover:bg-emerald-700">
+                    Use this for {FFP[redeem.ffp].name}
+                  </button>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                <h3 className="text-[14px] font-semibold">What one mile is worth to you</h3>
+                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {Object.entries(FFP).map(([k, p]) => (
+                    <div key={k} className="rounded border border-stone-200 p-2 dark:border-zinc-800">
+                      <div className="text-[12px] font-medium">{p.name}</div>
+                      <div className="text-[10px] text-stone-400 dark:text-zinc-500">{p.airline}</div>
+                      <div className="mt-1.5">
+                        <NumInput prefix="RM" step={0.005} value={assum.mile[k]}
+                          onChange={(v) => setAssum((a) => ({ ...a, mile: { ...a.mile, [k]: v } }))} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                <h3 className="text-[14px] font-semibold">Conversion tables by card tier</h3>
+                <p className="mt-1 text-[12px] text-stone-600 dark:text-zinc-400">
+                  Points needed per 1,000 miles. Malaysian issuers price these by card tier, so a
+                  Visa Infinite and a Platinum from the same bank convert at different rates.
+                </p>
+                <div className="mt-3 space-y-3">
+                  {Object.entries(CONV).filter(([k]) => k !== "cashOnly").map(([k, base]) => {
+                    const c = { ...base, ...(convOverrides[k] || {}) };
+                    return (
+                      <div key={k} className="rounded border border-stone-200 p-3 dark:border-zinc-800">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <div className="text-[12px] font-medium">{c.label}</div>
+                            <div className="mt-1"><SourceBadge conv={c} /></div>
+                          </div>
+                          {c.src?.startsWith("http") && (
+                            <a href={c.src} target="_blank" rel="noreferrer"
+                              className="inline-flex items-center gap-1 text-[11px] text-emerald-800 hover:underline dark:text-emerald-400">
+                              Source <ExternalLink size={10} />
+                            </a>
+                          )}
+                        </div>
+                        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                          <Field label="Points per RM1 cash">
+                            <NumInput prefix="" step={50} value={c.cashPer1}
+                              onChange={(v) => setConvField(k, "cashPer1", null, v)} />
+                          </Field>
+                          {Object.keys(FFP).filter((f) => c.ffp?.[f] !== undefined).map((f) => (
+                            <Field key={f} label={`${FFP[f].name} per 1,000`}>
+                              <NumInput prefix="" step={500} value={c.ffp[f]}
+                                onChange={(v) => setConvField(k, null, f, v)} />
+                            </Field>
+                          ))}
+                          <Field label="Minimum block" hint="points">
+                            <NumInput prefix="" step={1000} value={c.block}
+                              onChange={(v) => setConvField(k, "block", null, v)} />
+                          </Field>
+                          <Field label="Transfer fee">
+                            <NumInput step={5} value={c.fee} onChange={(v) => setConvField(k, "fee", null, v)} />
+                          </Field>
+                        </div>
+                        {c.note && <p className="mt-2 text-[11px] text-stone-500 dark:text-zinc-500">{c.note}</p>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                <h3 className="text-[14px] font-semibold">Benefits and mechanics</h3>
+                <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <Field label="Value of a lounge visit" hint="what you'd otherwise pay">
+                    <NumInput value={assum.loungeValue} step={10} onChange={(v) => setAssum((a) => ({ ...a, loungeValue: v }))} />
+                  </Field>
+                  <Field label="Value of travel insurance" hint="per year">
+                    <NumInput value={assum.insValue} step={25} onChange={(v) => setAssum((a) => ({ ...a, insValue: v }))} />
+                  </Field>
+                  <Field label="Service tax per card" hint="statutory, per year">
+                    <NumInput value={assum.serviceTax} step={5} onChange={(v) => setAssum((a) => ({ ...a, serviceTax: v }))} />
+                  </Field>
+                  <Field label="Weekend share of spend" hint="0 to 1">
+                    <NumInput prefix="" value={assum.wkndShare} step={0.05}
+                      onChange={(v) => setAssum((a) => ({ ...a, wkndShare: Math.min(1, v) }))} />
+                  </Field>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Toggle on={assum.applyBlock} onChange={(v) => setAssum((a) => ({ ...a, applyBlock: v }))}
+                    label={assum.applyBlock ? "Stranded points penalised" : "Stranded points ignored"} />
+                  <Toggle on={assum.applyDeval} onChange={(v) => setAssum((a) => ({ ...a, applyDeval: v }))}
+                    label={assum.applyDeval ? "Devaluation priced in" : "Devaluation ignored"} />
+                  <Toggle on={assum.includeSignup} onChange={(v) => setAssum((a) => ({ ...a, includeSignup: v }))}
+                    label={assum.includeSignup ? "Sign-up bonuses in year 1" : "Sign-up bonuses excluded"} />
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/30">
+                <h3 className="flex items-center gap-2 text-[14px] font-semibold text-amber-900 dark:text-amber-400">
+                  <AlertTriangle size={15} /> What this model still does not do
+                </h3>
+                <ul className="mt-2 space-y-1 text-[12px] leading-relaxed text-amber-900 dark:text-amber-400/90">
+                  <li>Interest charges are ignored. If you revolve a balance, none of this matters.</li>
+                  <li>Quarterly minimum-spend tiers, such as UOB One, are checked monthly instead.</li>
+                  <li>Points pooling across cards from the same issuer is not modelled, which understates UOB in particular.</li>
+                  <li>Wallet routing is a greedy search, so it finds a very good split, not a proven optimum.</li>
+                  <li>Campaign transfer bonuses, which run frequently on Enrich, are not included.</li>
+                  <li>Sign-up bonus values rotate constantly and are placeholders — overwrite them with the live offer.</li>
+                  <li>Credit score / CTOS-CCRIS eligibility, cash-advance fees, late-payment APR and card cancellation
+                    impact are not modelled — see the README for the full checklist to apply manually.</li>
+                </ul>
+              </div>
+            </section>
+          )}
+        </main>
+      </div>
+
+      {/* ---------------- MOBILE NAV ---------------- */}
+      <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-stone-200 bg-white md:hidden dark:border-zinc-800 dark:bg-zinc-950"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+        {TABS.map((t) => (
+          <button key={t.k} onClick={() => setTab(t.k)}
+            className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[9px] ${
+              tab === t.k ? "text-emerald-800 dark:text-emerald-400" : "text-stone-500 dark:text-zinc-500"}`}>
+            <t.icon size={16} />
+            {t.label}
+          </button>
+        ))}
+      </nav>
+    </div>
+  );
+}
+
+createRoot(document.getElementById("root")).render(<CreditCardDashboard />);

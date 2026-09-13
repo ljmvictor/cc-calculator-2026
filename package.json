@@ -1,0 +1,19 @@
+{
+  "name": "cc-calculator-2026",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Malaysian credit card optimiser — rank cards by your own spending, income and travel habits.",
+  "scripts": {
+    "build": "npm run build:css && npm run build:js",
+    "build:js": "esbuild src/app.jsx --bundle --minify --target=es2018 --outfile=dist/app.js",
+    "build:css": "tailwindcss -i src/input.css -o dist/app.css --minify"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "tailwindcss": "^3.4.0"
+  }
+}
