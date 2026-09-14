@@ -110,14 +110,23 @@ const Moon = (p) => <Icon {...p}><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
       new spend categories, both modelled on how the money actually reaches a
       card in Malaysia rather than as ordinary retail:
 
-        - `bnpl` (SPayLater, GrabPayLater). Grab auto-deducts the bill from the
-          GrabPay wallet or a linked card, and Shopee settles from ShopeePay,
-          so in practice this is an E-WALLET RELOAD. It therefore inherits each
-          card's e-wallet treatment exactly: every card that excludes e-wallet
-          reloads excludes BNPL too (see EX), and every card with an e-wallet
-          bonus rule earns that same rate on BNPL. Paying the bill straight
-          from a bank account by FPX earns nothing, which is the default here
-          for any card that excludes e-wallet.
+        - `bnpl` (SPayLater, GrabPayLater). Settling the bill costs NOTHING —
+          Grab's terms state no interest and no fees when repaid on time — so
+          no charge is modelled. Topping up a wallet is a different transaction
+          that may carry its own fee, and that is not modelled here either.
+          What is genuinely contested is whether the repayment EARNS. Malaysian
+          cardholders report it both ways, so `A.bnplEarns` decides it rather
+          than a hard-coded guess:
+            false (default) — the bank sees a stored-value load, so the card
+              pays nothing wherever it excludes e-wallet reloads. In Singapore
+              Shopee's repayment MCC moved from 5999 to 6540 with a "ShopeePay"
+              descriptor, which most issuers exclude; at least one Malaysian
+              cardholder reports the same outcome on Amex.
+            true — the charge codes as ordinary online retail and earns the
+              card's online-shopping rate. Other Malaysian cardholders report
+              exactly this, so it is not a fringe case.
+          Note the Singapore MCC evidence is the best-documented source here
+          but is NOT Malaysian, which is precisely why this is a toggle.
 
         - `loan` (housing, car, personal instalments). No Malaysian bank takes
           a credit card for a loan instalment directly. It only works through a
@@ -168,7 +177,7 @@ const CATS = [
   { key: "insurance",   label: "Insurance premiums",          def: 0, fx: false },
   { key: "education",   label: "Education & government",      def: 0, fx: false },
   { key: "bnpl",        label: "BNPL repayment (SPayLater, GrabPayLater)", def: 0, fx: false,
-    help: "Settled by topping up the ShopeePay or GrabPay wallet, so it earns whatever your card pays on e-wallet reloads — which most reward cards cap hard or exclude outright. Paying the bill straight from a bank account by FPX earns nothing at all." },
+    help: "Settling the bill is free — neither Shopee nor Grab charges you to pay on time, and no fee is applied here. What is contested is whether it EARNS. Malaysian cardholders report it both ways, so the Valuation tab has a toggle: off, the bank sees a stored-value load and pays nothing on most cards; on, it earns your card's online-shopping rate. Check one statement and set it to match. Note a wallet top-up is a different transaction and may carry its own fee." },
   { key: "loan",        label: "Loan instalments (house, car, personal)", def: 0, fx: false,
     baseOnly: true, rail: true,
     help: "Banks do not accept a credit card for a loan instalment directly. It only works through a third-party rail such as CardUp (2.6% plus SST) or jomSETTLE (2.5%), which passes the payment to the bank as an ordinary retail charge — so it earns the BASE rate only, never a bonus category. No Malaysian card has a base rate near 2.81%, so at the standard fee this ALWAYS loses money; it only turns positive on a promotional rate, such as Maybank's 0% CardUp offer. Its real use is clearing a fee waiver or a sign-up minimum spend. Set the fee in the Valuation tab." },
@@ -930,6 +939,19 @@ const DEFAULT_ASSUM = {
   // Maybank cardholders on the CardUp promotion pay 1.4%, or 0% on the first
   // RM6,000 — drop this to 0 to model that.
   loanFeePct: 2.81,
+  // Whether a SPayLater or GrabPayLater repayment earns rewards. Malaysian
+  // cardholders report this BOTH ways, so it is a setting, not a fact:
+  //   false — the bank sees a stored-value load and pays nothing on most cards.
+  //           In Singapore, Shopee's repayment MCC moved from 5999 to 6540 and
+  //           the descriptor became "ShopeePay", which most issuers exclude;
+  //           at least one Malaysian cardholder reports the same on Amex.
+  //   true  — the charge codes as ordinary online retail and earns the card's
+  //           online rate. Other Malaysian cardholders report earning cashback
+  //           on SPayLater repayments, so this is not a fringe case.
+  // Neither provider charges a fee to settle the bill on time, and none is
+  // modelled here; a wallet TOP-UP fee is a separate thing this does not cover.
+  // Default is the conservative side. Check one statement and set it.
+  bnplEarns: false,
 };
 
 const DEFAULT_PROFILE = {
@@ -977,8 +999,15 @@ function valueRoutes(convKey, convOverrides, mileVals) {
    ------------------------------------------------------------------------- */
 function earnMonth(card, monthSpend, A, pv) {
   const excl = new Set(card.excl || []);
+  // How a BNPL repayment codes at the bank is genuinely contested in Malaysia,
+  // so it is a setting rather than a hard-coded guess. See A.bnplEarns.
+  const bnplRetail = !!A.bnplEarns;
+  const isExcluded = (key) => (key === "bnpl" && bnplRetail) ? false : excl.has(key);
+  // When BNPL is treated as retail it matches the card's online-shopping rules,
+  // because that is what the Shopee or Grab charge looks like on the statement.
+  const ruleKey = (key) => (key === "bnpl" && bnplRetail) ? "onlineLocal" : key;
   let qual = 0;
-  CATS.forEach((c) => { if (!excl.has(c.key)) qual += monthSpend[c.key] || 0; });
+  CATS.forEach((c) => { if (!isExcluded(c.key)) qual += monthSpend[c.key] || 0; });
 
   const capUsed = {};
   let cbMonth = 0, ptsMonth = 0;
@@ -987,13 +1016,14 @@ function earnMonth(card, monthSpend, A, pv) {
   CATS.forEach((c) => {
     const amt = monthSpend[c.key] || 0;
     if (amt <= 0) return;
-    if (excl.has(c.key)) { perCat[c.key] = { value: 0, rule: "Excluded by issuer" }; return; }
+    if (isExcluded(c.key)) { perCat[c.key] = { value: 0, rule: "Excluded by issuer" }; return; }
 
     // Categories flagged `baseOnly` reach the bank through a third-party rail
     // (CardUp, jomSETTLE), which codes them as ordinary retail. They never
     // land in a bonus category, so only the card's base rate applies.
+    const rk = ruleKey(c.key);
     const active = c.baseOnly ? [] : (card.rules || []).map((r, i) => ({ ...r, _i: i }))
-      .filter((r) => (r.cats.includes("*") || r.cats.includes(c.key)) && (!r.min || qual >= r.min));
+      .filter((r) => (r.cats.includes("*") || r.cats.includes(rk)) && (!r.min || qual >= r.min));
     const wkndRules = active.filter((r) => r.wknd);
     const anyRules = active.filter((r) => !r.wknd);
 
@@ -2385,6 +2415,8 @@ function CreditCardDashboard() {
                   </Field>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
+                  <Toggle on={assum.bnplEarns} onChange={(v) => setAssum((a) => ({ ...a, bnplEarns: v }))}
+                    label={assum.bnplEarns ? "BNPL repayment earns like online retail" : "BNPL repayment earns nothing"} />
                   <Toggle on={assum.applyBlock} onChange={(v) => setAssum((a) => ({ ...a, applyBlock: v }))}
                     label={assum.applyBlock ? "Stranded points penalised" : "Stranded points ignored"} />
                   <Toggle on={assum.applyDeval} onChange={(v) => setAssum((a) => ({ ...a, applyDeval: v }))}
