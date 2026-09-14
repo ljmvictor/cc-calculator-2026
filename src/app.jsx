@@ -106,6 +106,36 @@ const Moon = (p) => <Icon {...p}><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
       REMOVED — MBSB publishes only debit cards and no evidence of a credit
       card could be found; restore it if that is wrong.
 
+   6. BNPL AND LOAN REPAYMENTS (added after the September 2026 refresh). Two
+      new spend categories, both modelled on how the money actually reaches a
+      card in Malaysia rather than as ordinary retail:
+
+        - `bnpl` (SPayLater, GrabPayLater). Grab auto-deducts the bill from the
+          GrabPay wallet or a linked card, and Shopee settles from ShopeePay,
+          so in practice this is an E-WALLET RELOAD. It therefore inherits each
+          card's e-wallet treatment exactly: every card that excludes e-wallet
+          reloads excludes BNPL too (see EX), and every card with an e-wallet
+          bonus rule earns that same rate on BNPL. Paying the bill straight
+          from a bank account by FPX earns nothing, which is the default here
+          for any card that excludes e-wallet.
+
+        - `loan` (housing, car, personal instalments). No Malaysian bank takes
+          a credit card for a loan instalment directly. It only works through a
+          third-party rail — CardUp (2.6% plus 8% SST on the fee, so 2.81%) or
+          jomSETTLE (2.5%) — which bills the card as ordinary retail. Two
+          consequences are modelled: the category is flagged `baseOnly`, so it
+          never lands in a bonus category and earns the base rate alone, and it
+          is flagged `rail`, so `A.loanFeePct` is charged against it as a real
+          cost in `railCost`.
+
+      The honest result is that at 2.81% NO card in this database wins: the best
+      base rate here is 1.00%, so paying a loan by card loses roughly 1.8% of
+      the amount. The ranking says so on every card rather than hiding it. It
+      only turns positive on a promotional rate — Maybank's CardUp offer is 0%
+      on the first RM6,000 and 1.4% after — or when the point is to clear a fee
+      waiver or a sign-up minimum spend rather than to earn. Loan spend does
+      count toward `annualQual`, so the waiver case is priced correctly.
+
    NOTE ON THE OLDER BUILD'S CARD LIST: its per-bank point formulas (UOB, CIMB,
    HSBC, SC, RHB) were hard-coded shortcuts, and this version keeps the issuer
    database as the single source of truth and drops those shortcuts. Its
@@ -137,6 +167,11 @@ const CATS = [
   { key: "entertain",   label: "Streaming & cinema",          def: 0, fx: false },
   { key: "insurance",   label: "Insurance premiums",          def: 0, fx: false },
   { key: "education",   label: "Education & government",      def: 0, fx: false },
+  { key: "bnpl",        label: "BNPL repayment (SPayLater, GrabPayLater)", def: 0, fx: false,
+    help: "Settled by topping up the ShopeePay or GrabPay wallet, so it earns whatever your card pays on e-wallet reloads — which most reward cards cap hard or exclude outright. Paying the bill straight from a bank account by FPX earns nothing at all." },
+  { key: "loan",        label: "Loan instalments (house, car, personal)", def: 0, fx: false,
+    baseOnly: true, rail: true,
+    help: "Banks do not accept a credit card for a loan instalment directly. It only works through a third-party rail such as CardUp (2.6% plus SST) or jomSETTLE (2.5%), which passes the payment to the bank as an ordinary retail charge — so it earns the BASE rate only, never a bonus category. No Malaysian card has a base rate near 2.81%, so at the standard fee this ALWAYS loses money; it only turns positive on a promotional rate, such as Maybank's 0% CardUp offer. Its real use is clearing a fee waiver or a sign-up minimum spend. Set the fee in the Valuation tab." },
   { key: "retail",      label: "Other retail",                def: 0, fx: false },
   { key: "travelAir",   label: "Flights & travel agents",     def: 0, fx: false, annual: true },
   { key: "hotel",       label: "Hotels",                      def: 0, fx: false, annual: true },
@@ -325,7 +360,10 @@ const devalFor = (k) => DEVAL[k] || DEVAL._default;
 /* ---------------------------------------------------------------------------
    5. CARD DATABASE
    ------------------------------------------------------------------------- */
-const EX = ["ewallet", "utilities", "insurance", "education"];
+/* The standard exclusion set. `bnpl` rides with `ewallet`: a SPayLater or
+   GrabPayLater bill is settled by topping up the wallet, so any card that
+   refuses to reward an e-wallet reload refuses to reward the BNPL bill too. */
+const EX = ["ewallet", "bnpl", "utilities", "insurance", "education"];
 const NOSIGN = { value: 0, minSpend: 0, window: 60, desc: "" };
 
 const CARDS = [
@@ -402,7 +440,7 @@ const CARDS = [
   { id: "cimb-e", bank: "CIMB", name: "e Credit Card", net: "Visa Platinum",
     conv: "cimb", fee: 80, waiver: { t: "none" }, income: 24000,
     base: { u: "cb", rate: 0.20 },
-    rules: [{ cats: ["onlineLocal", "onlineOs", "ewallet", "transport"], u: "cb", rate: 8, cap: 50, min: 500, label: "8% online, e-wallet and contactless" }],
+    rules: [{ cats: ["onlineLocal", "onlineOs", "ewallet", "bnpl", "transport"], u: "cb", rate: 8, cap: 50, min: 500, label: "8% online, e-wallet and contactless" }],
     capTotal: 50, fx: 1.00, lounge: null, ins: 0, excl: ["utilities", "insurance", "education"], verified: "2026-09",
     signup: NOSIGN,
     note: "Fee corrected to RM80 from CIMB's Product Disclosure Sheet — it is the one CIMB consumer card that is not fee-waived, and the database had it as free for life. Reaches roughly 0.96 miles per ringgit to Enrich, but only on e-Day, the 28th of each month, capped near RM1,667." },
@@ -495,7 +533,7 @@ const CARDS = [
       { cats: ["onlineOs", "overseasRet"], u: "cb", rate: 5, cap: 50, label: "Up to 5% on overseas spend" },
       { cats: ["groceries"], u: "cb", rate: 5, cap: 10, min: 500, label: "Up to 5% on groceries" },
       { cats: ["utilities"], u: "cb", rate: 5, cap: 10, min: 500, label: "Up to 5% on utilities" },
-      { cats: ["ewallet", "onlineLocal"], u: "cb", rate: 5, cap: 10, min: 250, label: "Up to 5% on e-wallet and online" },
+      { cats: ["ewallet", "bnpl", "onlineLocal"], u: "cb", rate: 5, cap: 10, min: 250, label: "Up to 5% on e-wallet and online" },
     ],
     capTotal: 110, fx: 1.00, lounge: null, ins: 0, excl: ["insurance", "education"], verified: "2026-09",
     signup: { value: 50, minSpend: 300, window: 60, desc: "Welcome cashback on first spend" },
@@ -551,7 +589,7 @@ const CARDS = [
       { cats: ["dining"], u: "cb", rate: 15, cap: 15, min: 1000, wknd: true, label: "15% on weekend dining" },
       { cats: ["groceries"], u: "cb", rate: 10, cap: 15, min: 1000, label: "10% on groceries, essentials and pharmacies" },
       { cats: ["petrol"], u: "cb", rate: 10, cap: 15, min: 1000, wknd: true, label: "10% on weekend petrol" },
-      { cats: ["onlineLocal", "ewallet"], u: "cb", rate: 1, min: 1000, label: "1% on online and e-wallet" },
+      { cats: ["onlineLocal", "ewallet", "bnpl"], u: "cb", rate: 1, min: 1000, label: "1% on online and e-wallet" },
     ],
     capTotal: 45, fx: 1.00, lounge: null, ins: 0,
     excl: ["utilities", "insurance", "education"], verified: "2026-09", signup: NOSIGN,
@@ -609,7 +647,7 @@ const CARDS = [
   { id: "alli-virtual", bank: "Alliance Bank", name: "Visa Virtual Card", net: "Visa Virtual",
     conv: "alli", fee: 0, waiver: { t: "lifetime" }, income: 36000,
     base: { u: "pts", rate: 1 },
-    rules: [{ cats: ["ewallet", "onlineLocal", "insurance", "utilities"], u: "pts", rate: 8, cap: 24000, label: "Boosted rate on e-wallet and online, including insurance and utilities" }],
+    rules: [{ cats: ["ewallet", "bnpl", "onlineLocal", "insurance", "utilities"], u: "pts", rate: 8, cap: 24000, label: "Boosted rate on e-wallet and online, including insurance and utilities" }],
     capTotal: null, fx: 1.00, lounge: null, ins: 0, excl: [], verified: "2026-09", signup: NOSIGN,
     note: "Alliance's card listing confirms zero annual fee and RM24,000 minimum income for the virtual card; the earn rate and caps are not published there and are carried over unverified. About 0.53 Enrich miles per ringgit. Rare in earning on insurance, utilities and e-wallet." },
 
@@ -644,7 +682,7 @@ const CARDS = [
   { id: "hsbc-amanah-mpower", bank: "HSBC Amanah", name: "MPower Platinum Card-i", net: "Visa Platinum",
     conv: "cashOnly", fee: 240, waiver: { t: "swipes", v: 12 }, income: 36000,
     base: { u: "cb", rate: 0.20 },
-    rules: [{ cats: ["petrol", "groceries", "ewallet"], u: "cb", rate: 8, cap: 50, min: 2000, label: "8% e-wallet, petrol and groceries" }],
+    rules: [{ cats: ["petrol", "groceries", "ewallet", "bnpl"], u: "cb", rate: 8, cap: 50, min: 2000, label: "8% e-wallet, petrol and groceries" }],
     capTotal: 50, fx: 1.00, lounge: null, ins: 0, excl: ["utilities", "insurance", "education"], verified: "2026-05",
     signup: { value: 200, minSpend: 2000, window: 60, desc: "Up to RM200 cashback for new primary cardholders" },
     note: "UNVERIFIED — hsbcamanah.com.my is blocked by the network egress proxy in this environment, so nothing on this card could be re-read in the September 2026 refresh." },
@@ -725,7 +763,7 @@ const CARDS = [
     base: { u: "cb", rate: 0.20 },
     rules: [
       { cats: ["onlineLocal", "onlineOs", "entertain"], u: "cb", rate: 10, cap: 15, min: 1000, label: "10% on online spend" },
-      { cats: ["ewallet"], u: "cb", rate: 5, cap: 15, min: 1000, label: "5% on e-wallet reloads" },
+      { cats: ["ewallet", "bnpl"], u: "cb", rate: 5, cap: 15, min: 1000, label: "5% on e-wallet reloads" },
     ],
     capTotal: 30, fx: 1.00, lounge: null, ins: 0, excl: ["utilities", "insurance", "education"], verified: "2026-09",
     signup: { value: 88, minSpend: 0, window: 60, desc: "RM88 cashback plus a one-year fee waiver" },
@@ -734,7 +772,7 @@ const CARDS = [
   { id: "uob-world", bank: "UOB", name: "World Card", net: "World MC",
     conv: "uobStd", fee: 600, waiver: { t: "swipes", v: 12 }, income: 60000,
     base: { u: "pts", rate: 1 },
-    rules: [{ cats: ["ewallet"], u: "pts", rate: 8, cap: 7200, label: "Boosted rate on e-wallet reloads" }],
+    rules: [{ cats: ["ewallet", "bnpl"], u: "pts", rate: 8, cap: 7200, label: "Boosted rate on e-wallet reloads" }],
     capTotal: null, fx: 2.25, lounge: null, ins: 0, excl: ["utilities", "insurance", "education"], verified: "2026-09",
     signup: NOSIGN,
     note: "Fee corrected to RM600 from UOB's published annual-fee table (the database had RM195, the Preferred card's fee). About 0.66 miles per ringgit on e-wallet, but capped near RM300 each for Touch 'n Go, Boost and BigPay." },
@@ -792,7 +830,7 @@ const CARDS = [
   { id: "ocbc-titanium", bank: "OCBC", name: "Titanium Mastercard", net: "Titanium MC",
     conv: "ocbc", fee: 75, waiver: { t: "spend", v: 20000 }, income: 48000,
     base: { u: "pts", rate: 1 },
-    rules: [{ cats: ["onlineLocal", "onlineOs", "ewallet", "overseasRet"], u: "pts", rate: 6, cap: 20000, label: "6x on online and e-wallet spend" }],
+    rules: [{ cats: ["onlineLocal", "onlineOs", "ewallet", "bnpl", "overseasRet"], u: "pts", rate: 6, cap: 20000, label: "6x on online and e-wallet spend" }],
     capTotal: null, fx: 1.25, lounge: null, ins: 0, excl: EX, verified: "2026-09", signup: NOSIGN,
     note: "Corrected against OCBC's card page: fee RM75 waived at RM20,000 of annual spend, income RM48,000. The bonus rate is 6x OCBC$ on online and e-wallet spend, doubling to 12x on Double Dates (1.1, 2.2 and so on) and on payday, the 25th — the model uses the everyday 6x. Bonus earn is capped at 20,000 OCBC$ a cycle, after which it drops to 1x. OCBC adds a 1.25% administration charge on foreign currency." },
 
@@ -886,6 +924,12 @@ const DEFAULT_ASSUM = {
   horizon: 5,
   applyDeval: true,
   tripMonths: 2,   // months of the year your flights and hotels actually land in
+  // Third-party rail fee charged on loan instalments paid by card, as a
+  // percentage of the amount paid. CardUp Malaysia's published rate is 2.6%
+  // plus 8% SST on the fee itself, so 2.81% all-in; jomSETTLE charges 2.5%.
+  // Maybank cardholders on the CardUp promotion pay 1.4%, or 0% on the first
+  // RM6,000 — drop this to 0 to model that.
+  loanFeePct: 2.81,
 };
 
 const DEFAULT_PROFILE = {
@@ -945,7 +989,10 @@ function earnMonth(card, monthSpend, A, pv) {
     if (amt <= 0) return;
     if (excl.has(c.key)) { perCat[c.key] = { value: 0, rule: "Excluded by issuer" }; return; }
 
-    const active = (card.rules || []).map((r, i) => ({ ...r, _i: i }))
+    // Categories flagged `baseOnly` reach the bank through a third-party rail
+    // (CardUp, jomSETTLE), which codes them as ordinary retail. They never
+    // land in a bonus category, so only the card's base rate applies.
+    const active = c.baseOnly ? [] : (card.rules || []).map((r, i) => ({ ...r, _i: i }))
       .filter((r) => (r.cats.includes("*") || r.cats.includes(c.key)) && (!r.min || qual >= r.min));
     const wkndRules = active.filter((r) => r.wknd);
     const anyRules = active.filter((r) => !r.wknd);
@@ -1071,11 +1118,22 @@ function evaluateCard(card, spend, A, P, convOverrides) {
   const convFee = blocksPerYear * (conv.fee || 0);
   const tax = A.serviceTax;
 
+  // Loan instalments only reach a card through a paid rail. Charge that fee on
+  // the categories flagged `rail`, so the ranking shows the true net — which is
+  // negative whenever the rail costs more than the card pays back.
+  let railBase = 0;
+  CATS.forEach((c) => {
+    if (!c.rail) return;
+    const amt = spend[c.key] || 0;
+    railBase += c.annual ? amt : amt * 12;
+  });
+  const railCost = (railBase * (A.loanFeePct || 0)) / 100;
+
   const signupValue = A.includeSignup && annualQual >= (card.signup?.minSpend || 0)
     ? (card.signup?.value || 0) : 0;
 
   const gross = cbYear + ptsValue + loungeValue + insValue;
-  const costs = feeCharged + tax + fxCost + convFee;
+  const costs = feeCharged + tax + fxCost + convFee + railCost;
   const net = gross - costs;
   const netY1 = net + signupValue;
 
@@ -1091,6 +1149,13 @@ function evaluateCard(card, spend, A, P, convOverrides) {
   }
 
   const flags = [];
+  if (railCost > 0) {
+    // What the card actually pays back on loan spend, at its base rate.
+    const baseBack = railBase * (card.base.u === "cb" ? card.base.rate / 100 : card.base.rate * pv);
+    flags.push(baseBack >= railCost
+      ? `Loan rail costs ${rm(railCost)} a year and returns ${rm(baseBack)} — worth it on this card`
+      : `Loan rail costs ${rm(railCost)} a year but returns only ${rm(baseBack)} — you lose ${rm(railCost - baseBack)}`);
+  }
   if (P.income < card.income) flags.push(`Income below the RM ${fmt0(card.income)} minimum`);
   if (card.fee > P.maxFee && feeCharged > 0) flags.push("Annual fee above your ceiling");
   if (capLoss > 0) flags.push(`Card cap wastes ${rm(capLoss)} of rebate a year`);
@@ -1102,7 +1167,7 @@ function evaluateCard(card, spend, A, P, convOverrides) {
 
   return {
     card, conv, best, routes, pv, net, netY1, gross, cbYear, ptsYear, ptsEarned, ptsValue,
-    milesYear, mpr, loungeValue, insValue, signupValue, feeCharged, tax, fxCost, convFee,
+    milesYear, mpr, loungeValue, insValue, signupValue, feeCharged, tax, fxCost, convFee, railCost, railBase,
     costs, capLoss, blockLoss, blocksPerYear, waiverNote, perCat, years, annualTotal,
     devalRate: dev.annual, devalEvents: dev.events, annualQual, loungeUsed, flags,
     eligible: P.income >= card.income,
@@ -1515,6 +1580,9 @@ function CreditCardDashboard() {
                           </button>
                         ))}
                       </div>
+                      {c.help && (
+                        <p className="mt-2 text-[11px] leading-relaxed text-stone-500 dark:text-zinc-500">{c.help}</p>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1679,6 +1747,9 @@ function CreditCardDashboard() {
                                   <tr><td className="py-1 text-rose-700 dark:text-rose-400">Service tax</td><td className="py-1 text-right tabular-nums text-rose-700 dark:text-rose-400">−{fmt(e.tax)}</td></tr>
                                   <tr><td className="py-1 text-rose-700 dark:text-rose-400">FX markup ({fmt(e.card.fx)}%)</td><td className="py-1 text-right tabular-nums text-rose-700 dark:text-rose-400">−{fmt(e.fxCost)}</td></tr>
                                   <tr><td className="py-1 text-rose-700 dark:text-rose-400">Transfer fees ({e.blocksPerYear} transfers)</td><td className="py-1 text-right tabular-nums text-rose-700 dark:text-rose-400">−{fmt(e.convFee)}</td></tr>
+                                  {e.railCost > 0 && (
+                                    <tr><td className="py-1 text-rose-700 dark:text-rose-400">Loan rail fee ({fmt(assum.loanFeePct)}% of {rm(e.railBase)})</td><td className="py-1 text-right tabular-nums text-rose-700 dark:text-rose-400">−{fmt(e.railCost)}</td></tr>
+                                  )}
                                   <tr className="border-t-2 border-stone-300 font-semibold dark:border-zinc-700">
                                     <td className="py-1.5">Steady-state net</td><td className="py-1.5 text-right tabular-nums">{rm(e.net)}</td>
                                   </tr>
@@ -2307,6 +2378,10 @@ function CreditCardDashboard() {
                   <Field label="Weekend share of spend" hint="0 to 1">
                     <NumInput prefix="" value={assum.wkndShare} step={0.05}
                       onChange={(v) => setAssum((a) => ({ ...a, wkndShare: Math.min(1, v) }))} />
+                  </Field>
+                  <Field label="Loan rail fee" hint="% charged by CardUp or jomSETTLE">
+                    <NumInput prefix="" value={assum.loanFeePct} step={0.1}
+                      onChange={(v) => setAssum((a) => ({ ...a, loanFeePct: Math.max(0, v) }))} />
                   </Field>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
