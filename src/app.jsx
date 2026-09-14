@@ -61,25 +61,96 @@ const Moon = (p) => <Icon {...p}><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
       once per card — holding three lounge cards does not treble your access.
       A partner toggle then spends a card slot on a second lounge card only
       when your main card cannot already bring a guest.
-   3. Card terms refreshed against September 2026 reporting. Notable changes:
-      UOB PRVI Miles Elite fee RM600 / RM50k waiver, CIMB Travel World Elite
-      waiver raised to RM120k, HSBC TravelOne now fee-free with passes shared
-      with the supplementary cardholder, Hong Leong Visa Infinite waived for
-      life but lounge cut to 4 visits, UOB Visa Infinite Metal lounge capped at
-      12 and supplementary access dropped, Maybank Grab Mastercard discontinued
-      on 7 September 2026, and the Maybank Amex Platinum Charge added.
-      These came from trade coverage, NOT from issuer PDFs — see DATA_NOTE.
+   3. Card terms re-read off ISSUER PAGES in September 2026, replacing the
+      trade-coverage figures the previous build carried. That pass contradicted
+      a good deal of what was here. The larger corrections:
+
+        - CIMB fees were wrong across the range. CIMB's own Product Disclosure
+          Sheet waives the annual fee on Preferred Visa Infinite, World
+          Mastercard and Cash Rebate Platinum (this file had RM600, RM480 and
+          RM195), charges RM80 on the e Credit Card (this file had it free),
+          and charges RM1,215.09 — not RM600 — on Travel World Elite, whose
+          income bar is RM250,000, not RM150,000.
+        - UOB Visa Infinite Metal was recorded as having had its lounge "cut to
+          12 visits with supplementary access dropped". UOB's own page says the
+          opposite: unlimited DragonPass access for the cardholder AND a guest,
+          with supplementary cardholders keeping the same entitlement. That
+          claim, and the matching devaluation events, have been removed.
+        - UOB fees: EVOL is RM90, Lazada RM100, Lady's Solitaire RM300 and
+          World RM600 — this file had RM195, RM195, RM800 and RM195.
+        - Public Bank Visa Infinite is free for life and pays cash, not points;
+          Visa Signature pays 2% capped at RM30, not 6% capped at RM38.
+        - Hong Leong's Infinite card earns Enrich Points DIRECTLY, so it no
+          longer routes through the Hong Leong points table.
+        - RHB publishes three different miles ratios by card tier, so the single
+          `rhb` conversion table was split into rhbPremier / rhbVI / rhbStd.
+        - HSBC Live+ needs RM102,000 of income, not RM36,000.
+        - Standard Chartered Simply Cash is not an uncapped 1.5% card.
+        - AmBank has no "BonusLink Visa Infinite"; the card is a Signature.
+
+   4. WHAT COULD NOT BE VERIFIED. Three issuer domains and all three fallback
+      aggregators are unreachable from the environment this refresh ran in:
+      maybank2u.com.my (403), aeoncredit.com.my, unirm.my (the UNIRinggit
+      catalogue), ringgitplus.com, refinedpoints.com and bolehmiles.com.
+      So all 8 Maybank cards, both AEON cards, and the UOB metal and privilege
+      banking conversion ratios are CARRIED OVER UNCHECKED and are flagged as
+      such in their notes. Anything still stamped `verified: "2026-05"` was not
+      re-read in this pass. `sourced: true` now means exactly one thing: the
+      ratio was read off the issuer page named in `src`.
+
+   5. Cards removed or re-tiered: CIMB Petronas Visa Platinum (withdrawn from
+      sale 28 Oct 2024, deactivated 30 Jun 2025) is replaced by the current
+      PETRONAS Visa Platinum-i, and the PETRONAS Visa Infinite-i was added.
+      AmBank BonusLink Visa Infinite became BonusLink Visa Signature. The
+      PB-AIA card is a Visa Gold, not a Visa Platinum. MBSB Platinum Card-i was
+      REMOVED — MBSB publishes only debit cards and no evidence of a credit
+      card could be found; restore it if that is wrong.
+
+   6. BNPL AND LOAN REPAYMENTS (added after the September 2026 refresh). Two
+      new spend categories, both modelled on how the money actually reaches a
+      card in Malaysia rather than as ordinary retail:
+
+        - `bnpl` (SPayLater, GrabPayLater). Settling the bill costs NOTHING —
+          Grab's terms state no interest and no fees when repaid on time — so
+          no charge is modelled. Topping up a wallet is a different transaction
+          that may carry its own fee, and that is not modelled here either.
+          What is genuinely contested is whether the repayment EARNS. Malaysian
+          cardholders report it both ways, so `A.bnplEarns` decides it rather
+          than a hard-coded guess:
+            false (default) — the bank sees a stored-value load, so the card
+              pays nothing wherever it excludes e-wallet reloads. In Singapore
+              Shopee's repayment MCC moved from 5999 to 6540 with a "ShopeePay"
+              descriptor, which most issuers exclude; at least one Malaysian
+              cardholder reports the same outcome on Amex.
+            true — the charge codes as ordinary online retail and earns the
+              card's online-shopping rate. Other Malaysian cardholders report
+              exactly this, so it is not a fringe case.
+          Note the Singapore MCC evidence is the best-documented source here
+          but is NOT Malaysian, which is precisely why this is a toggle.
+
+        - `loan` (housing, car, personal instalments). No Malaysian bank takes
+          a credit card for a loan instalment directly. It only works through a
+          third-party rail — CardUp (2.6% plus 8% SST on the fee, so 2.81%) or
+          jomSETTLE (2.5%) — which bills the card as ordinary retail. Two
+          consequences are modelled: the category is flagged `baseOnly`, so it
+          never lands in a bonus category and earns the base rate alone, and it
+          is flagged `rail`, so `A.loanFeePct` is charged against it as a real
+          cost in `railCost`.
+
+      The honest result is that at 2.81% NO card in this database wins: the best
+      base rate here is 1.00%, so paying a loan by card loses roughly 1.8% of
+      the amount. The ranking says so on every card rather than hiding it. It
+      only turns positive on a promotional rate — Maybank's CardUp offer is 0%
+      on the first RM6,000 and 1.4% after — or when the point is to clear a fee
+      waiver or a sign-up minimum spend rather than to earn. Loan spend does
+      count toward `annualQual`, so the waiver case is priced correctly.
 
    NOTE ON THE OLDER BUILD'S CARD LIST: its per-bank point formulas (UOB, CIMB,
-   HSBC, SC, RHB) were hard-coded shortcuts and, on inspection, some fees were
-   already stale (e.g. it modelled CIMB Visa Infinite as fee-free; this build's
-   sourced CIMB schedule shows RM600, waived at RM40k spend). Rather than merge
-   two conflicting numbers for the same card, this version keeps the sourced
-   v2 database as the single source of truth and drops the older shortcuts.
-   Its bank coverage (UOB, CIMB, HSBC, SC, RHB) is already a subset of the 16
-   banks below. Its passcode lock screen was also dropped — a client-side
-   password baked into the page's JavaScript is visible to anyone who views
-   source, so it protected nothing and would have been misleading to keep.
+   HSBC, SC, RHB) were hard-coded shortcuts, and this version keeps the issuer
+   database as the single source of truth and drops those shortcuts. Its
+   passcode lock screen was also dropped — a client-side password baked into
+   the page's JavaScript is visible to anyone who views source, so it protected
+   nothing and would have been misleading to keep.
    ========================================================================== */
 
 /* ---------------------------------------------------------------------------
@@ -105,6 +176,11 @@ const CATS = [
   { key: "entertain",   label: "Streaming & cinema",          def: 0, fx: false },
   { key: "insurance",   label: "Insurance premiums",          def: 0, fx: false },
   { key: "education",   label: "Education & government",      def: 0, fx: false },
+  { key: "bnpl",        label: "BNPL repayment (SPayLater, GrabPayLater)", def: 0, fx: false,
+    help: "Settling the bill is free — neither Shopee nor Grab charges you to pay on time, and no fee is applied here. What is contested is whether it EARNS. Malaysian cardholders report it both ways, so the Valuation tab has a toggle: off, the bank sees a stored-value load and pays nothing on most cards; on, it earns your card's online-shopping rate. Check one statement and set it to match. Note a wallet top-up is a different transaction and may carry its own fee." },
+  { key: "loan",        label: "Loan instalments (house, car, personal)", def: 0, fx: false,
+    baseOnly: true, rail: true,
+    help: "Banks do not accept a credit card for a loan instalment directly. It only works through a third-party rail such as CardUp (2.6% plus SST) or jomSETTLE (2.5%), which passes the payment to the bank as an ordinary retail charge — so it earns the BASE rate only, never a bonus category. No Malaysian card has a base rate near 2.81%, so at the standard fee this ALWAYS loses money; it only turns positive on a promotional rate, such as Maybank's 0% CardUp offer. Its real use is clearing a fee waiver or a sign-up minimum spend. Set the fee in the Valuation tab." },
   { key: "retail",      label: "Other retail",                def: 0, fx: false },
   { key: "travelAir",   label: "Flights & travel agents",     def: 0, fx: false, annual: true },
   { key: "hotel",       label: "Hotels",                      def: 0, fx: false, annual: true },
@@ -116,7 +192,7 @@ const ANNUAL_CATS = CATS.filter((c) => c.annual);
 /* When the card terms in this file were last reviewed, and how. Shown in the
    UI so a stale database is visible rather than silently trusted. */
 const DATA_REVIEWED = "September 2026";
-const DATA_NOTE = "Cards marked 2026-09 were refreshed against Malaysian credit-card trade coverage in September 2026, not read off issuer PDFs. Treat every figure as a starting point and confirm it with the bank before you apply.";
+const DATA_NOTE = "Cards marked 2026-09 were re-read off the issuer's own website or fee schedule in September 2026, and each card's note says which figures came from there and which were carried over. Cards still marked 2026-05 were NOT re-checked: Maybank, AEON and the UNIRinggit rewards catalogue could not be reached during the refresh, so every Maybank and AEON figure is inherited from the previous build. Issuers change fees and caps without much notice, so confirm anything that decides your choice with the bank before you apply.";
 
 /* ---------------------------------------------------------------------------
    2. FREQUENT FLYER PROGRAMMES
@@ -147,107 +223,125 @@ const FFP = {
 const CONV = {
   cashOnly: {
     label: "Statement cash rebate", cashPer1: 1, ffp: {}, block: 0, fee: 0,
-    expiry: 0, sourced: true, src: "Rebate posts directly to the statement", srcDate: "2026-05",
+    expiry: 0, sourced: true, src: "Rebate posts directly to the statement", srcDate: "2026-09",
   },
   mbPremium: {
     label: "TreatsPoints — Visa Infinite / World Elite tier",
     cashPer1: 500,
     ffp: { enrich: 12500, krisflyer: 12500, asia: 12500, airasia: 7000 },
-    block: 12500, fee: 0, expiry: 36, sourced: true,
-    src: "https://www.maybank2u.com.my/iwov-resources/pdf/personal/cards/treats_reward/TPoints-Fee-AirMiles.pdf",
-    srcDate: "2026-03",
-    note: "Rose from 10,000 to 12,500 TP per 1,000 miles on 22 February 2025.",
+    block: 12500, fee: 0, expiry: 36, sourced: false, src: "", srcDate: "2026-09",
+    note: "UNVERIFIED in the September 2026 refresh. maybank2u.com.my answers 403 Forbidden to this environment, including the TreatsPoints air-miles schedule this table used to cite, so the ratio could not be re-read off an issuer page. Figures below are the previous build's and may be stale.",
   },
   mbStandard: {
     label: "TreatsPoints — Classic / Gold / Platinum / Signature tier",
     cashPer1: 500,
     ffp: { enrich: 20000, krisflyer: 20000, asia: 20000, airasia: 7000 },
-    block: 20000, fee: 0, expiry: 36, sourced: true,
-    src: "https://www.maybank2u.com.my/iwov-resources/pdf/personal/cards/treats_reward/TPoints-Fee-AirMiles.pdf",
-    srcDate: "2026-03",
-    note: "Published as 20,000 TP = 1,000 Enrich or Cathay; 10,000 TP = 500 KrisFlyer.",
+    block: 20000, fee: 0, expiry: 36, sourced: false, src: "", srcDate: "2026-09",
+    note: "UNVERIFIED in the September 2026 refresh — see mbPremium. maybank2u.com.my is unreachable from here (403).",
   },
   mbCharge: {
     label: "TreatsPoints — American Express Platinum Charge tier",
     cashPer1: 500,
     ffp: { enrich: 7000, krisflyer: 7000, asia: 7000, airasia: 7000 },
     block: 7000, fee: 0, expiry: 36, sourced: false, src: "", srcDate: "2026-09",
-    note: "Back-solved from the 0.71 miles-per-ringgit figure trade sites publish for this card against its 5x earn rate. Confirm the ratio in Maybank's TreatsPoints schedule before relying on it.",
+    note: "UNVERIFIED. Back-solved from a trade-press miles-per-ringgit figure, never read off an issuer page, and Maybank's site is unreachable from here (403). Treat as a guess.",
   },
   cimb: {
     label: "CIMB Bonus Points",
     cashPer1: 500,
     ffp: { enrich: 12500, krisflyer: 15000, asia: 15000, avios: 15000, airasia: 15000 },
-    block: 75000, fee: 0, expiry: 36, sourced: true,
+    block: 62500, fee: 0, expiry: 36, sourced: true,
     src: "https://www.cimb.com.my/en/personal/day-to-day-banking/cards/credit-card/bonus-points-redemption.html",
-    srcDate: "2026-05",
-    note: "62,500 BP = 5,000 Enrich; 75,000 BP = 5,000 KrisFlyer / Asia Miles / Avios. Minimum block was raised fivefold to 75,000 BP.",
+    srcDate: "2026-09",
+    note: "Read off the issuer page: 500 BP = RM1, points expire three years after the end of the quarter they were earned in, and transfers go in multiples of 5,000 miles with a 5,000-mile minimum. The block here is that 5,000-mile floor priced in Enrich points (5,000 x 12.5); on KrisFlyer, Asia Miles or Avios the same floor costs 75,000 BP. The per-airline ratios themselves were NOT shown on that page and are carried over unverified.",
   },
   uobMetal: {
     label: "UNIRinggit — Visa Infinite Metal",
     cashPer1: 100, ffp: { enrich: 5000, krisflyer: 5000, asia: 5000, airasia: 5000 },
-    block: 5000, fee: 0, expiry: 24, sourced: true,
-    src: "https://unirm.my/Member/Products/Product_Catalogue_Air_Miles.aspx", srcDate: "2026-05",
-    note: "Best published UNIRM ratio in the catalogue. Premium tiers pay no conversion fee.",
+    block: 5000, fee: 0, expiry: 24, sourced: false, src: "", srcDate: "2026-09",
+    note: "UNVERIFIED. The UNIRinggit catalogue at unirm.my — the source this table used to cite — is unreachable from this environment, so the metal-tier ratio could not be re-read.",
   },
   uobPBVI: {
     label: "UNIRinggit — Privilege Banking Visa Infinite",
     cashPer1: 100, ffp: { enrich: 10000, krisflyer: 10000, asia: 10000, airasia: 10000 },
-    block: 10000, fee: 0, expiry: 24, sourced: true,
-    src: "https://unirm.my/Member/Products/Product_Catalogue_Air_Miles.aspx", srcDate: "2026-05",
+    block: 10000, fee: 0, expiry: 24, sourced: false, src: "", srcDate: "2026-09",
+    note: "UNVERIFIED — unirm.my is unreachable from this environment.",
   },
   uobStd: {
     label: "UNIRinggit — Visa Infinite / PRVI Miles Elite",
     cashPer1: 100, ffp: { enrich: 12000, krisflyer: 12000, asia: 12000, airasia: 12000 },
     block: 12000, fee: 0, expiry: 24, sourced: true,
-    src: "https://www.uob.com.my/wealthbanking/banking/card-prvi-miles-elite.page", srcDate: "2026-05",
-    note: "UOB raised UNIRM required per 1,000 miles by 11% to 33% on 23 September 2024.",
+    src: "https://www.uob.com.my/personal/cards/credit-cards/uob-prvi-miles-elite-card.page",
+    srcDate: "2026-09",
+    note: "UOB's own PRVI Miles Elite page states the Agoda earn rate is 'converted from UNIRM at 12,000 UNIRM = 1,000 miles', which fixes this ratio. Whether every airline partner shares it is not stated there.",
   },
   hsbc: {
     label: "HSBC Rewards Points", cashPer1: 500,
     ffp: { enrich: 25000, krisflyer: 30000, asia: 25000, avios: 25000, airasia: 25000 },
-    block: 25000, fee: 0, expiry: 36, sourced: false, src: "", srcDate: "2026-05",
-    note: "Ratios shown follow HSBC's regional schedule. Confirm the Malaysian catalogue before relying on this.",
+    block: 25000, fee: 0, expiry: 36, sourced: false, src: "", srcDate: "2026-09",
+    note: "UNVERIFIED. HSBC Malaysia publishes its card pages but not an air-miles ratio table that could be reached from here; the figures below follow HSBC's regional schedule.",
   },
   sc:   { label: "SC 360° Rewards Points", cashPer1: 500,
           ffp: { enrich: 15000, krisflyer: 15000, asia: 15000, avios: 15000, airasia: 15000 },
-          block: 15000, fee: 0, expiry: 36, sourced: false, src: "", srcDate: "2026-05" },
-  rhb:  { label: "RHB Rewards Points", cashPer1: 500,
-          ffp: { enrich: 15000, krisflyer: 20000, asia: 20000, airasia: 15000 },
-          block: 15000, fee: 0, expiry: 36, sourced: false, src: "", srcDate: "2026-05" },
+          block: 15000, fee: 0, expiry: 36, sourced: false, src: "", srcDate: "2026-09",
+          note: "UNVERIFIED — sc.com/my publishes card pages but no reachable 360° Rewards air-miles table. Note the Journey card converts at 2 SC Miles per AirMile, a separate scheme from these points." },
+
+  /* RHB splits its ratio three ways by card tier — the old single `rhb` table could not
+     express that, and understated the premium tiers. Read off RHB's own announcement. */
+  rhbPremier: { label: "RHB Rewards — Premier Visa Infinite tier", cashPer1: 500,
+          ffp: { enrich: 8000, krisflyer: 14000, asia: 14000, airasia: 14000 },
+          block: 8000, fee: 0, expiry: 36, sourced: true,
+          src: "https://www.rhbgroup.com/-/media/Assets/Corporate-Website/Document/Highlights/Announcement/H20230829-1.pdf",
+          srcDate: "2026-09",
+          note: "8,000 Loyalty Points = 1,000 Enrich; 14,000 = 1,000 KrisFlyer. Minimum redemption rose from 500 to 1,000 miles on 21 September 2023. Asia Miles and airasia are not on RHB's published table and are carried at the KrisFlyer rate as a placeholder." },
+  rhbVI:  { label: "RHB Rewards — Visa Infinite tier", cashPer1: 500,
+          ffp: { enrich: 10000, krisflyer: 14000, asia: 14000, airasia: 14000 },
+          block: 10000, fee: 0, expiry: 36, sourced: true,
+          src: "https://www.rhbgroup.com/-/media/Assets/Corporate-Website/Document/Highlights/Announcement/H20230829-1.pdf",
+          srcDate: "2026-09",
+          note: "10,000 Loyalty Points = 1,000 Enrich; 14,000 = 1,000 KrisFlyer." },
+  rhbStd: { label: "RHB Rewards — all other RHB cards", cashPer1: 500,
+          ffp: { enrich: 14000, krisflyer: 14000, asia: 14000, airasia: 14000 },
+          block: 14000, fee: 0, expiry: 36, sourced: true,
+          src: "https://www.rhbgroup.com/-/media/Assets/Corporate-Website/Document/Highlights/Announcement/H20230829-1.pdf",
+          srcDate: "2026-09",
+          note: "14,000 Loyalty Points = 1,000 Enrich or KrisFlyer on every non-Infinite RHB card." },
   hlb:  { label: "Hong Leong Reward Points", cashPer1: 500,
           ffp: { enrich: 10000, airasia: 12000 },
-          block: 10000, fee: 0, expiry: 36, sourced: false, src: "", srcDate: "2026-05",
-          note: "Hong Leong Visa Infinite is widely reported at 1.00 mile per RM on dining, the strongest local rate in the market." },
+          block: 10000, fee: 0, expiry: 36, sourced: false, src: "", srcDate: "2026-09",
+          note: "UNVERIFIED — Hong Leong publishes no reachable ratio table. Note the Infinite card no longer belongs here: it earns Enrich Points directly (see hlb-vi)." },
   pb:   { label: "Public Bank VIP Points", cashPer1: 500,
           ffp: { enrich: 20000, airasia: 20000 },
-          block: 20000, fee: 0, expiry: 36, sourced: false, src: "", srcDate: "2026-05" },
+          block: 20000, fee: 0, expiry: 36, sourced: false, src: "", srcDate: "2026-09" },
   amb:  { label: "AmBank Rewards", cashPer1: 500,
           ffp: { enrich: 15000, airasia: 15000 },
-          block: 15000, fee: 0, expiry: 36, sourced: false, src: "", srcDate: "2026-05" },
+          block: 15000, fee: 0, expiry: 36, sourced: false, src: "", srcDate: "2026-09" },
   alli: { label: "Alliance Timeless Points", cashPer1: 500,
           ffp: { enrich: 15000, airasia: 15000 },
-          block: 15000, fee: 0, expiry: 0, sourced: false, src: "", srcDate: "2026-05" },
-  ocbc: { label: "OCBC Rewards Points", cashPer1: 500,
+          block: 15000, fee: 0, expiry: 0, sourced: false, src: "", srcDate: "2026-09" },
+  ocbc: { label: "OCBC$ Rewards Points", cashPer1: 500,
           ffp: { enrich: 20000, airasia: 20000 },
-          block: 20000, fee: 0, expiry: 36, sourced: false, src: "", srcDate: "2026-05" },
+          block: 20000, fee: 0, expiry: 60, sourced: false, src: "", srcDate: "2026-09",
+          note: "Expiry corrected to 5 years — OCBC's Titanium page states OCBC$ are valid for five years and redeem as cash credit in the app. The air-miles ratios are UNVERIFIED; OCBC publishes no reachable conversion table." },
   affin:{ label: "Affin Reward Points", cashPer1: 500,
           ffp: { enrich: 20000, airasia: 20000 },
-          block: 20000, fee: 0, expiry: 36, sourced: false, src: "", srcDate: "2026-05" },
+          block: 20000, fee: 0, expiry: 36, sourced: false, src: "", srcDate: "2026-09" },
   bonuslink: { label: "BonusLink Points", cashPer1: 200,
           ffp: { enrich: 12000, airasia: 12000 },
-          block: 12000, fee: 0, expiry: 36, sourced: false, src: "", srcDate: "2026-05",
+          block: 12000, fee: 0, expiry: 36, sourced: false, src: "", srcDate: "2026-09",
           note: "BonusLink also spends at face value in Petronas and partner stores, which is often the better route." },
   enrichDirect: { label: "Enrich Points earned directly", cashPer1: 0,
-          ffp: { enrich: 1000 }, block: 1000, fee: 0, expiry: 36, sourced: false, src: "", srcDate: "2026-05",
-          note: "No conversion step, so no block wastage and no transfer fee." },
+          ffp: { enrich: 1000 }, block: 1000, fee: 0, expiry: 36, sourced: true,
+          src: "https://www.hlb.com.my/en/personal-banking/credit-cards/travel/infinite.html",
+          srcDate: "2026-09",
+          note: "No conversion step, so no block wastage and no transfer fee. Hong Leong's Infinite page states the card earns Enrich Points directly at RM1 = 1 point on dining, which is what fixes the 1:1 ratio here." },
   milesDirect: { label: "Airline miles earned directly", cashPer1: 0,
           ffp: { krisflyer: 1000, enrich: 1000, asia: 1000 }, block: 1000, fee: 0,
-          expiry: 36, sourced: false, src: "", srcDate: "2026-05" },
+          expiry: 36, sourced: false, src: "", srcDate: "2026-09" },
   islam:{ label: "Bank Islam Points", cashPer1: 500, ffp: {}, block: 0, fee: 0,
-          expiry: 36, sourced: false, src: "", srcDate: "2026-05" },
+          expiry: 36, sourced: false, src: "", srcDate: "2026-09" },
   aeon: { label: "AEON Point", cashPer1: 200, ffp: {}, block: 0, fee: 0,
-          expiry: 24, sourced: false, src: "", srcDate: "2026-05" },
+          expiry: 24, sourced: false, src: "", srcDate: "2026-09" },
 };
 
 /* ---------------------------------------------------------------------------
@@ -258,9 +352,12 @@ const DEVAL = {
   mbStandard: { annual: 0.14, events: ["Feb 2025: revision raised points needed by 25% to 43% across the range"] },
   mbCharge:   { annual: 0.12, events: ["Tracks the premium TreatsPoints tier, which rose 25% in Feb 2025"] },
   cimb:       { annual: 0.10, events: ["2024: minimum transfer block raised fivefold, from 15,000 to 75,000 BP"] },
-  uobMetal:   { annual: 0.14, events: ["2026: lounge cut to 12 visits from 1 June and supplementary access removed from 1 March — the fourth UOB cut in 24 months"] },
-  uobPBVI:    { annual: 0.14, events: ["Sep 2026: lounge access revised across every UOB card, one card per visit"] },
-  uobStd:     { annual: 0.14, events: ["Sep 2024 UNIRM ratios rose 11% to 33%; four further benefit cuts through 2026, with a miles devaluation widely expected"] },
+  uobMetal:   { annual: 0.14, events: [] },
+  uobPBVI:    { annual: 0.14, events: [] },
+  uobStd:     { annual: 0.14, events: ["Sep 2024: UNIRM required per 1,000 miles rose 11% to 33%"] },
+  rhbPremier: { annual: 0.10, events: ["Sep 2023: Enrich went from 3,000 to 8,000 Loyalty Points per 1,000 miles, and KrisFlyer from 6,000 to 14,000 — well over a doubling"] },
+  rhbVI:      { annual: 0.10, events: ["Sep 2023: Enrich went from 4,000 to 10,000 Loyalty Points per 1,000 miles, KrisFlyer 6,000 to 14,000"] },
+  rhbStd:     { annual: 0.10, events: ["Sep 2023: Enrich went from 5,500 to 14,000 Loyalty Points per 1,000 miles, KrisFlyer 6,000 to 14,000"] },
   hsbc:       { annual: 0.10, events: ["Jan 2025: KrisFlyer ratio moved from 25,000 to 30,000 points per 10,000 miles"] },
   amb:        { annual: 0.12, events: ["2025: Enrich Visa Infinite earn rates cut"] },
   alli:       { annual: 0.12, events: ["2025: Visa Platinum devalued"] },
@@ -272,7 +369,10 @@ const devalFor = (k) => DEVAL[k] || DEVAL._default;
 /* ---------------------------------------------------------------------------
    5. CARD DATABASE
    ------------------------------------------------------------------------- */
-const EX = ["ewallet", "utilities", "insurance", "education"];
+/* The standard exclusion set. `bnpl` rides with `ewallet`: a SPayLater or
+   GrabPayLater bill is settled by topping up the wallet, so any card that
+   refuses to reward an e-wallet reload refuses to reward the BNPL bill too. */
+const EX = ["ewallet", "bnpl", "utilities", "insurance", "education"];
 const NOSIGN = { value: 0, minSpend: 0, window: 60, desc: "" };
 
 const CARDS = [
@@ -282,7 +382,7 @@ const CARDS = [
     rules: [{ cats: ["*"], u: "cb", rate: 5, cap: 50, wknd: true, label: "5% weekend cashback on the Amex face" }],
     capTotal: 50, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05",
     signup: { value: 100, minSpend: 500, window: 60, desc: "Cashback on first spend" },
-    note: "Weekend rebate sits on the Amex card only, and Amex acceptance is patchy." },
+    note: "MAYBANK UNVERIFIED: maybank2u.com.my answers 403 Forbidden to this environment, so no figure on this card could be re-read off an issuer page in the September 2026 refresh. Everything here is carried over from the previous build. Weekend rebate sits on the Amex card only, and Amex acceptance is patchy." },
 
   { id: "mb-2plat", bank: "Maybank", name: "2 Cards Platinum (Amex + Visa)", net: "Amex / Visa",
     conv: "mbStandard", fee: 0, waiver: { t: "lifetime" }, income: 60000,
@@ -291,7 +391,7 @@ const CARDS = [
       { cats: ["*"], u: "cb", rate: 5, cap: 50, wknd: true, label: "5% weekend cashback on the Amex face" },
       { cats: ["*"], u: "pts", rate: 5, cap: 5000, wknd: true, label: "5x TreatsPoints on weekends" },
     ],
-    capTotal: 50, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+    capTotal: 50, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN, note: "MAYBANK UNVERIFIED: maybank2u.com.my answers 403 Forbidden to this environment, so no figure on this card could be re-read off an issuer page in the September 2026 refresh. Everything here is carried over from the previous build. " },
 
   { id: "mb-vi", bank: "Maybank", name: "Visa Infinite", net: "Visa Infinite",
     conv: "mbPremium", fee: 800, waiver: { t: "spend", v: 30000 }, income: 150000,
@@ -299,7 +399,7 @@ const CARDS = [
     rules: [{ cats: ["onlineOs", "overseasRet", "travelAir", "hotel"], u: "pts", rate: 5, label: "5x on overseas and travel" }],
     capTotal: null, fx: 1.00, lounge: { p: "Plaza Premium", v: 12, g: 0 }, ins: 1000000,
     excl: EX, verified: "2026-05", signup: NOSIGN,
-    note: "Earn rises to up to 10x TreatsPoints from 1 June 2026 per Maybank's card listing." },
+    note: "MAYBANK UNVERIFIED: maybank2u.com.my answers 403 Forbidden to this environment, so no figure on this card could be re-read off an issuer page in the September 2026 refresh. Everything here is carried over from the previous build. Earn rises to up to 10x TreatsPoints from 1 June 2026 per Maybank's card listing." },
 
   { id: "mb-worldelite", bank: "Maybank", name: "World Elite Mastercard", net: "World Elite MC",
     conv: "mbPremium", fee: 800, waiver: { t: "spend", v: 30000 }, income: 100000,
@@ -307,308 +407,384 @@ const CARDS = [
     rules: [{ cats: ["dining", "onlineOs", "overseasRet", "travelAir"], u: "pts", rate: 5, label: "5x dining, overseas and travel" }],
     capTotal: null, fx: 1.00, lounge: { p: "Plaza Premium", v: 6, g: 0 }, ins: 500000,
     excl: EX, verified: "2026-05", signup: NOSIGN,
-    note: "Low miles yield, but the flexible conversion makes it useful for topping up a business-class redemption." },
+    note: "MAYBANK UNVERIFIED: maybank2u.com.my answers 403 Forbidden to this environment, so no figure on this card could be re-read off an issuer page in the September 2026 refresh. Everything here is carried over from the previous build. Low miles yield, but the flexible conversion makes it useful for topping up a business-class redemption." },
 
   { id: "mb-charge", bank: "Maybank", name: "American Express Platinum Charge", net: "Amex Charge",
     conv: "mbCharge", fee: 3250, waiver: { t: "none" }, income: 200000,
     base: { u: "pts", rate: 5 },
     rules: [],
     capTotal: null, fx: 1.00, lounge: { p: "Plaza Premium", v: 12, g: 1, sup: true }, ins: 1500000,
-    excl: EX, verified: "2026-09", signup: NOSIGN,
-    note: "5x TreatsPoints on everything, which trade sites rate at about 0.71 miles per ringgit — the strongest all-rounder in Malaysia for 2026. The RM3,250 fee has no published waiver, so it only pays at high spend. Amex acceptance is the practical limit." },
+    excl: EX, verified: "2026-05", signup: NOSIGN,
+    note: "MAYBANK UNVERIFIED: maybank2u.com.my answers 403 Forbidden to this environment, so no figure on this card could be re-read off an issuer page in the September 2026 refresh. Everything here is carried over from the previous build. 5x TreatsPoints on everything, which trade sites rate at about 0.71 miles per ringgit — the strongest all-rounder in Malaysia for 2026. The RM3,250 fee has no published waiver, so it only pays at high spend. Amex acceptance is the practical limit." },
 
   { id: "mb-petrolgroc", bank: "Maybank", name: "Islamic Ikhwan Visa Platinum Card-i", net: "Visa Platinum",
     conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 70000,
     base: { u: "cb", rate: 0.25 },
     rules: [{ cats: ["petrol", "groceries"], u: "cb", rate: 5, cap: 88, label: "5% petrol and groceries daily" }],
     capTotal: 88, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN,
-    note: "Maybank lists a RM88 monthly cap on the 5% petrol and groceries rebate." },
+    note: "MAYBANK UNVERIFIED: maybank2u.com.my answers 403 Forbidden to this environment, so no figure on this card could be re-read off an issuer page in the September 2026 refresh. Everything here is carried over from the previous build. Maybank lists a RM88 monthly cap on the 5% petrol and groceries rebate." },
 
   { id: "mb-fnf", bank: "Maybank", name: "Family & Friends Card", net: "Visa Platinum",
     conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 30000,
     base: { u: "cb", rate: 0.25 },
     rules: [{ cats: ["groceries", "petrol", "transport", "entertain"], u: "cb", rate: 5, cap: 50, min: 1500, label: "5% on four chosen lifestyle categories" }],
-    capTotal: 50, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+    capTotal: 50, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN, note: "MAYBANK UNVERIFIED: maybank2u.com.my answers 403 Forbidden to this environment, so no figure on this card could be re-read off an issuer page in the September 2026 refresh. Everything here is carried over from the previous build. " },
 
   { id: "mb-grab-successor", bank: "Maybank", name: "Grab Mastercard replacement card", net: "Platinum MC",
     conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 24000,
     base: { u: "cb", rate: 0.25 },
     rules: [{ cats: ["dining", "entertain", "onlineLocal"], u: "cb", rate: 8, cap: 54, min: 1500, label: "8% dining, digital lifestyle and online entertainment" }],
-    capTotal: 54, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-09", signup: NOSIGN,
-    note: "The Grab Mastercard Platinum was discontinued on 7 September 2026 and existing holders were migrated automatically. GrabCoin earning is gone; the replacement pays 8% on three categories, but only above RM1,500 total monthly spend and capped at RM18 a category — so RM54 a month at best." },
+    capTotal: 54, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN,
+    note: "MAYBANK UNVERIFIED: maybank2u.com.my answers 403 Forbidden to this environment, so no figure on this card could be re-read off an issuer page in the September 2026 refresh. Everything here is carried over from the previous build. The Grab Mastercard Platinum was discontinued on 7 September 2026 and existing holders were migrated automatically. GrabCoin earning is gone; the replacement pays 8% on three categories, but only above RM1,500 total monthly spend and capped at RM18 a category — so RM54 a month at best." },
 
   { id: "cimb-cashrebate", bank: "CIMB", name: "Cash Rebate Platinum", net: "Visa/MC Platinum",
-    conv: "cashOnly", fee: 195, waiver: { t: "swipes", v: 12 }, income: 36000,
-    base: { u: "cb", rate: 0.20 },
-    rules: [
-      { cats: ["petrol"], u: "cb", rate: 8, cap: 30, wknd: true, label: "8% petrol on weekends" },
-      { cats: ["groceries", "dining"], u: "cb", rate: 2, cap: 30, wknd: true, label: "2% groceries and dining on weekends" },
-    ],
-    capTotal: 60, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
-
-  { id: "cimb-e", bank: "CIMB", name: "e Credit Card", net: "Visa Platinum",
-    conv: "cimb", fee: 0, waiver: { t: "lifetime" }, income: 24000,
-    base: { u: "cb", rate: 0.20 },
-    rules: [{ cats: ["onlineLocal", "onlineOs", "ewallet", "transport"], u: "cb", rate: 8, cap: 50, min: 500, label: "8% online, e-wallet and contactless" }],
-    capTotal: 50, fx: 1.00, lounge: null, ins: 0, excl: ["utilities", "insurance", "education"], verified: "2026-05",
-    signup: NOSIGN,
-    note: "Reaches roughly 0.96 miles per ringgit to Enrich, but only on e-Day, the 28th of each month, capped near RM1,667." },
-
-  { id: "cimb-petronas", bank: "CIMB", name: "Petronas Visa Platinum", net: "Visa Platinum",
     conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 24000,
     base: { u: "cb", rate: 0.20 },
-    rules: [{ cats: ["petrol"], u: "cb", rate: 8, cap: 25, min: 500, label: "8% at Petronas stations" }],
-    capTotal: 40, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+    rules: [
+      { cats: ["groceries", "petrol", "entertain", "utilities"], u: "cb", rate: 5, cap: 30, label: "Up to 5% on groceries, petrol, cinema, mobile and utility bills" },
+    ],
+    capTotal: 60, fx: 1.00, lounge: null, ins: 0, excl: ["insurance", "education"], verified: "2026-09", signup: NOSIGN,
+    note: "Fee corrected to waived-for-life and income to RM24,000 from CIMB's Product Disclosure Sheet and card page; the database previously had RM195 with a 12-swipe waiver. The weekend-only structure it recorded is not what CIMB publishes — the bonus rate covers groceries, petrol, cinema, mobile and utilities. CIMB does not publish the per-category cap, so RM30 is carried over unverified." },
+
+  { id: "cimb-e", bank: "CIMB", name: "e Credit Card", net: "Visa Platinum",
+    conv: "cimb", fee: 80, waiver: { t: "none" }, income: 24000,
+    base: { u: "cb", rate: 0.20 },
+    rules: [{ cats: ["onlineLocal", "onlineOs", "ewallet", "bnpl", "transport"], u: "cb", rate: 8, cap: 50, min: 500, label: "8% online, e-wallet and contactless" }],
+    capTotal: 50, fx: 1.00, lounge: null, ins: 0, excl: ["utilities", "insurance", "education"], verified: "2026-09",
+    signup: NOSIGN,
+    note: "Fee corrected to RM80 from CIMB's Product Disclosure Sheet — it is the one CIMB consumer card that is not fee-waived, and the database had it as free for life. Reaches roughly 0.96 miles per ringgit to Enrich, but only on e-Day, the 28th of each month, capped near RM1,667." },
+
+  { id: "cimb-petronas", bank: "CIMB", name: "PETRONAS Visa Platinum-i", net: "Visa Platinum",
+    conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 24000,
+    base: { u: "cb", rate: 0.20 },
+    rules: [
+      { cats: ["petrol"], u: "cb", rate: 8, cap: 100, label: "Up to 8% at PETRONAS, Setel and PETRONAS EV charging" },
+      { cats: ["groceries", "dining", "transport"], u: "cb", rate: 2, cap: 100, label: "Up to 2% on groceries, dining and cashless parking" },
+    ],
+    capTotal: 100, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-09", signup: NOSIGN,
+    note: "Replaces the CIMB Petronas Visa Platinum this database listed: CIMB withdrew that card from sale on 28 October 2024 and deactivated it on 30 June 2025. Rebate is capped at RM1,200 a year, modelled here as RM100 a month. From 1 January 2026 CIMB Islamic's cards moved from the Ujrah to the Tawarruq structure." },
+
+  { id: "cimb-petronas-vi", bank: "CIMB", name: "PETRONAS Visa Infinite-i", net: "Visa Infinite",
+    conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 120000,
+    base: { u: "cb", rate: 0.20 },
+    rules: [
+      { cats: ["petrol"], u: "cb", rate: 12, cap: 120, label: "Up to 12% at PETRONAS, Setel and PETRONAS EV charging" },
+      { cats: ["groceries", "dining", "transport"], u: "cb", rate: 6, cap: 120, label: "Up to 6% on groceries, dining and cashless parking" },
+      { cats: ["onlineOs", "overseasRet"], u: "cb", rate: 1, label: "1% unlimited on overseas spend" },
+    ],
+    capTotal: 120, fx: 1.00, lounge: { p: "Plaza Premium", v: 4, g: 0 }, ins: 300000,
+    excl: EX, verified: "2026-09", signup: NOSIGN,
+    note: "Added in the September 2026 refresh — the strongest published petrol rebate in the market. Fee waived for life, income RM120,000 (RM60,000 for CIMB@Work customers). Rebate capped at RM1,440 a year, modelled as RM120 a month; the 1% overseas rate needs a statement balance of RM1,500 or more. Also 12 Sky Lounge visits at Subang on RM2,000 of monthly spend. Travel takaful RM300,000." },
 
   { id: "cimb-travel", bank: "CIMB", name: "Travel World Elite Mastercard", net: "World Elite MC",
-    conv: "cimb", fee: 600, waiver: { t: "spend", v: 120000 }, income: 150000,
+    conv: "cimb", fee: 1215, waiver: { t: "spend", v: 120000 }, income: 250000,
     base: { u: "pts", rate: 1 },
-    rules: [{ cats: ["travelAir", "hotel", "onlineOs", "overseasRet"], u: "pts", rate: 10, label: "10x on travel, airlines, duty-free and foreign currency" }],
-    capTotal: null, fx: 1.25, lounge: { p: "Plaza Premium First", v: 12, g: 0 }, ins: 1000000,
+    rules: [
+      { cats: ["travelAir", "hotel", "onlineOs", "overseasRet"], u: "pts", rate: 10, label: "10x on travel, airlines, duty-free and foreign currency" },
+      { cats: ["groceries", "dining", "petrol", "retail", "onlineLocal", "transport", "entertain"], u: "pts", rate: 2, label: "2x on local spend" },
+    ],
+    capTotal: null, fx: 1.00, lounge: { p: "Plaza Premium First", v: 12, g: 0 }, ins: 1000000,
     excl: EX, verified: "2026-09", signup: NOSIGN,
-    note: "Roughly 0.80 miles per ringgit to Enrich, and the 1.25% FX fee is among the lowest here. The waiver got much harder in 2026: RM120,000 a year for a full waiver, or RM60,000 for half, both requiring repayments from a CIMB account. New cardholders get a full first-year waiver at RM15,000 in 120 days." },
+    note: "Fee corrected to RM1,215.09 and income to RM250,000 from CIMB's Product Disclosure Sheet and card page — the database had RM600 and RM150,000. CIMB waives the 1% bank admin fee on foreign currency for this card, so the FX markup is the scheme rate alone. The 12 lounge visits are SHARED between the principal and supplementary cardholders. Waiver: RM120,000 a year for a full waiver or RM60,000 for half, both needing repayments from a CIMB account; new cardholders get a full first-year waiver at RM15,000 in 120 days." },
 
   { id: "cimb-preferred", bank: "CIMB", name: "Preferred Visa Infinite", net: "Visa Infinite",
-    conv: "cimb", fee: 600, waiver: { t: "spend", v: 40000 }, income: 150000,
+    conv: "cimb", fee: 0, waiver: { t: "lifetime" }, income: 150000,
     base: { u: "pts", rate: 1 },
     rules: [{ cats: ["onlineOs", "overseasRet", "dining", "hotel"], u: "pts", rate: 10, label: "10x on dining and overseas" }],
     capTotal: null, fx: 2.25, lounge: { p: "Plaza Premium", v: 6, g: 0 }, ins: 1000000,
-    excl: EX, verified: "2026-05", signup: NOSIGN,
-    note: "About 0.92 miles per ringgit to Enrich at the higher spend tiers." },
+    excl: EX, verified: "2026-09", signup: NOSIGN,
+    note: "Fee corrected to waived-for-life from CIMB's Product Disclosure Sheet; the database had RM600 with an RM40,000 waiver. About 0.92 miles per ringgit to Enrich at the higher spend tiers. Earn rates, lounge and insurance are not published on a reachable CIMB page and are carried over unverified." },
 
   { id: "cimb-world", bank: "CIMB", name: "World Mastercard", net: "World MC",
-    conv: "cimb", fee: 480, waiver: { t: "spend", v: 30000 }, income: 100000,
+    conv: "cimb", fee: 0, waiver: { t: "lifetime" }, income: 100000,
     base: { u: "pts", rate: 1 },
     rules: [{ cats: ["dining", "onlineOs", "overseasRet"], u: "pts", rate: 5, label: "5x dining and overseas" }],
     capTotal: null, fx: 2.25, lounge: { p: "Plaza Premium", v: 4, g: 0 }, ins: 500000,
-    excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+    excl: EX, verified: "2026-09", signup: NOSIGN,
+    note: "Fee corrected to waived-for-life from CIMB's Product Disclosure Sheet; the database had RM480 with an RM30,000 waiver. Earn rates, lounge and insurance are carried over unverified." },
 
   { id: "pb-vsig", bank: "Public Bank", name: "Visa Signature", net: "Visa Signature",
-    conv: "cashOnly", fee: 500, waiver: { t: "swipes", v: 12 }, income: 100000,
-    base: { u: "cb", rate: 0.30 },
-    rules: [{ cats: ["onlineOs", "overseasRet", "onlineLocal"], u: "cb", rate: 6, cap: 38, min: 2000, label: "6% overseas and online" }],
-    capTotal: 38, fx: 1.00, lounge: { p: "Plaza Premium", v: 4, g: 0 }, ins: 500000,
-    excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+    conv: "cashOnly", fee: 0, waiver: { t: "swipes", v: 12 }, income: 80000,
+    base: { u: "cb", rate: 0.10 },
+    rules: [{ cats: ["dining", "onlineLocal", "onlineOs"], u: "cb", rate: 2, cap: 30, label: "2% dining and online, minimum RM100 a transaction" }],
+    capTotal: 30, fx: 1.00, lounge: { p: "Plaza Premium", v: 2, g: 0 }, ins: 500000,
+    excl: EX, verified: "2026-09", signup: NOSIGN,
+    note: "Corrected against Public Bank's card page: the first year is free and later years need 12 swipes, income is RM80,000, and the headline rate is 2% on dining and online capped at RM30 a cycle — not the 6% / RM38 this database recorded. Each transaction must be RM100 or more to qualify. The two lounge visits each need RM1,000 of retail spend within 30 days either side of the visit." },
 
   { id: "pb-quantum", bank: "Public Bank", name: "Quantum Visa / Mastercard", net: "Visa/MC",
-    conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 24000,
+    conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 36000,
     base: { u: "cb", rate: 0.10 },
-    rules: [{ cats: ["onlineLocal", "onlineOs", "transport", "entertain"], u: "cb", rate: 5, cap: 30, min: 1500, label: "5% online, contactless and mobile wallet" }],
-    capTotal: 30, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+    rules: [{ cats: ["onlineOs", "overseasRet"], u: "cb", rate: 2, cap: 20, label: "2% overseas on the Mastercard, minimum RM100 a transaction" }],
+    capTotal: 20, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-09", signup: NOSIGN,
+    note: "Corrected against Public Bank's card page: free for life, income RM36,000, and the cap is RM20 a cycle across principal and supplementary cards combined. The Mastercard face pays 2% on overseas spend; the Visa face pays 1% on contactless. Every qualifying transaction must be RM100 or more." },
 
   { id: "pb-vi", bank: "Public Bank", name: "Visa Infinite", net: "Visa Infinite",
-    conv: "pb", fee: 800, waiver: { t: "spend", v: 50000 }, income: 150000,
-    base: { u: "pts", rate: 1 },
-    rules: [{ cats: ["onlineOs", "overseasRet", "travelAir", "hotel"], u: "pts", rate: 5, label: "5x overseas and travel" }],
-    capTotal: null, fx: 1.00, lounge: { p: "Plaza Premium", v: 8, g: 0 }, ins: 1000000,
-    excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+    conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 100000,
+    base: { u: "cb", rate: 0.30 },
+    rules: [{ cats: ["onlineOs", "overseasRet"], u: "cb", rate: 1, label: "1% unlimited on overseas retail" }],
+    capTotal: null, fx: 1.00, lounge: { p: "Plaza Premium", v: 5, g: 0 }, ins: 500000,
+    excl: EX, verified: "2026-09", signup: NOSIGN,
+    note: "Corrected against Public Bank's card page: free for life for the principal and first supplementary cardholder, income RM100,000. It is a Cash MegaBonus card, not a points card — 1% uncapped overseas and 0.3% uncapped locally — so the conversion table was switched from VIP Points to cash rebate. Lounge is 5 visits, each needing RM1,000 of retail spend within 30 days either side. Travel insurance RM500,000, not RM1,000,000." },
 
-  { id: "pb-aia", bank: "Public Bank", name: "PB-AIA Visa Platinum", net: "Visa Platinum",
-    conv: "pb", fee: 250, waiver: { t: "swipes", v: 12 }, income: 60000,
+  { id: "pb-aia", bank: "Public Bank", name: "PB-AIA Visa Gold", net: "Visa Gold",
+    conv: "pb", fee: 0, waiver: { t: "swipes", v: 12 }, income: 24000,
     base: { u: "pts", rate: 1 },
     rules: [{ cats: ["insurance"], u: "pts", rate: 3, label: "3x on AIA premiums" }],
-    capTotal: null, fx: 1.00, lounge: null, ins: 0, excl: ["utilities", "education"], verified: "2026-05",
-    signup: NOSIGN, note: "One of the few cards that earns on insurance premiums." },
+    capTotal: null, fx: 1.00, lounge: null, ins: 0, excl: ["utilities", "education"], verified: "2026-09",
+    signup: NOSIGN,
+    note: "Renamed and re-tiered: Public Bank's AIA co-brand is a Visa GOLD card at RM24,000 income, not the Visa Platinum at RM60,000 this database listed. One of the few cards that earns on insurance premiums. The 3x rate is not published on a reachable page and is carried over unverified." },
 
   { id: "rhb-shell", bank: "RHB", name: "Shell Visa", net: "Visa Platinum",
-    conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 24000,
+    conv: "cashOnly", fee: 195, waiver: { t: "swipes", v: 24 }, income: 24000,
     base: { u: "cb", rate: 0.20 },
-    rules: [{ cats: ["petrol", "groceries", "onlineLocal", "ewallet", "utilities"], u: "cb", rate: 5, cap: 30, min: 800, label: "5% on everyday essentials" }],
-    capTotal: 30, fx: 1.00, lounge: null, ins: 0, excl: ["insurance", "education"], verified: "2026-05",
+    rules: [
+      { cats: ["petrol"], u: "cb", rate: 12, cap: 30, min: 250, label: "Up to 12% at Shell" },
+      { cats: ["onlineOs", "overseasRet"], u: "cb", rate: 5, cap: 50, label: "Up to 5% on overseas spend" },
+      { cats: ["groceries"], u: "cb", rate: 5, cap: 10, min: 500, label: "Up to 5% on groceries" },
+      { cats: ["utilities"], u: "cb", rate: 5, cap: 10, min: 500, label: "Up to 5% on utilities" },
+      { cats: ["ewallet", "bnpl", "onlineLocal"], u: "cb", rate: 5, cap: 10, min: 250, label: "Up to 5% on e-wallet and online" },
+    ],
+    capTotal: 110, fx: 1.00, lounge: null, ins: 0, excl: ["insurance", "education"], verified: "2026-09",
     signup: { value: 50, minSpend: 300, window: 60, desc: "Welcome cashback on first spend" },
-    note: "Unusually, e-wallet reloads and utilities are inside the bonus category list." },
+    note: "Rebuilt from RHB's card page. It is NOT free for life: RM195 a year after a free first year, waived on 24 swipes — twice the usual requirement. The rebate is per-category, not a single pooled cap: 12% at Shell capped RM30, 5% overseas capped RM50, and 5% each on groceries, utilities and e-wallet/online capped RM10 apiece, with per-category minimums of RM500 (groceries, utilities) and RM250 (petrol, e-wallet). Unusually, e-wallet reloads and utilities are inside the bonus list." },
 
-  { id: "rhb-rewards", bank: "RHB", name: "Rewards Motion Code Visa Signature", net: "Visa Signature",
-    conv: "rhb", fee: 320, waiver: { t: "swipes", v: 12 }, income: 60000,
+  { id: "rhb-rewards", bank: "RHB", name: "Rewards Credit Card", net: "Visa Signature",
+    conv: "rhbStd", fee: 200, waiver: { t: "spend", v: 10000 }, income: 24000,
     base: { u: "pts", rate: 1 },
-    rules: [{ cats: ["onlineLocal", "onlineOs", "dining"], u: "pts", rate: 5, cap: 8000, label: "5x online and dining" }],
-    capTotal: null, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05",
-    signup: { value: 50, minSpend: 500, window: 60, desc: "5,000 welcome Reward Points" }, note: "" },
+    rules: [
+      { cats: ["entertain"], u: "pts", rate: 10, label: "10x on cinema" },
+      { cats: ["onlineOs", "overseasRet"], u: "pts", rate: 4, label: "4x on overseas spend" },
+      { cats: ["onlineLocal", "travelAir", "hotel"], u: "pts", rate: 3, label: "3x on online, airlines, hotels and travel" },
+      { cats: ["insurance", "retail"], u: "pts", rate: 2, label: "2x on health, insurance and shopping" },
+    ],
+    capTotal: null, fx: 1.00, lounge: null, ins: 0, excl: ["utilities", "education"], verified: "2026-09",
+    signup: { value: 50, minSpend: 500, window: 60, desc: "5,000 welcome Reward Points" },
+    note: "Corrected against RHB's card page: fee RM200 after a free first year, waived at RM10,000 of annual spend, and income is RM24,000 not RM60,000. The full published rate card is 10x cinema, 4x overseas, 3x online and travel, 2x health/insurance/shopping, 1x everything else." },
 
   { id: "rhb-vi", bank: "RHB", name: "Visa Infinite", net: "Visa Infinite",
-    conv: "rhb", fee: 600, waiver: { t: "spend", v: 36000 }, income: 150000,
+    conv: "rhbVI", fee: 600, waiver: { t: "spend", v: 36000 }, income: 150000,
     base: { u: "pts", rate: 1 },
-    rules: [{ cats: ["onlineOs", "overseasRet", "travelAir", "hotel"], u: "pts", rate: 5, label: "5x overseas and travel" }],
-    capTotal: null, fx: 1.00, lounge: { p: "Plaza Premium", v: 6, g: 1 }, ins: 1000000,
-    excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+    rules: [
+      { cats: ["onlineOs", "overseasRet"], u: "pts", rate: 5, label: "5x on overseas spend" },
+      { cats: ["travelAir", "hotel"], u: "pts", rate: 1, label: "1x on airlines, hotels and travel" },
+    ],
+    capTotal: null, fx: 1.00, lounge: { p: "Plaza Premium", v: 9, g: 0 }, ins: 2000000,
+    excl: EX, verified: "2026-09", signup: NOSIGN,
+    note: "Conversion moved to the Visa Infinite tier — RHB's own announcement puts this card at 10,000 Loyalty Points per 1,000 Enrich miles, better than the 14,000 every other RHB card pays. Lounge is tiered, not flat: 3 visits on activation, then 1 more for each calendar month you spend RM1,000, to a maximum of 9 a year, becoming unlimited only above RM100,000 of annual spend. Modelled at the realistic 9. Travel insurance RM2,000,000. Airlines and travel earn only 1x, not 5x." },
 
   { id: "rhb-premier-vi", bank: "RHB", name: "Premier Visa Infinite", net: "Visa Infinite",
-    conv: "rhb", fee: 800, waiver: { t: "lifetime" }, income: 250000,
+    conv: "rhbPremier", fee: 800, waiver: { t: "lifetime" }, income: 250000,
     base: { u: "pts", rate: 1.5 },
     rules: [{ cats: ["onlineOs", "overseasRet", "travelAir", "hotel"], u: "pts", rate: 6, label: "6x overseas and travel" }],
-    capTotal: null, fx: 1.00, lounge: { p: "Plaza Premium", v: 12, g: 1 }, ins: 1500000,
-    excl: EX, verified: "2026-05", signup: NOSIGN, note: "Requires an RHB Premier relationship." },
-
-  { id: "hlb-vi", bank: "Hong Leong", name: "Visa Infinite", net: "Visa Infinite",
-    conv: "hlb", fee: 0, waiver: { t: "lifetime" }, income: 150000,
-    base: { u: "pts", rate: 1 },
-    rules: [{ cats: ["dining"], u: "pts", rate: 10, label: "Boosted rate on dining, uncapped" }],
-    capTotal: null, fx: 1.00, lounge: { p: "Plaza Premium", v: 4, g: 0 }, ins: 1000000,
+    capTotal: null, fx: 1.00, lounge: { p: "Plaza Premium", v: 9, g: 0 }, ins: 1500000,
     excl: EX, verified: "2026-09", signup: NOSIGN,
-    note: "Still the strongest dining card in Malaysia at 1.00 Enrich mile per ringgit, uncapped and with no minimum spend. Lifetime fee waiver on principal and supplementary. Lounge is 4 Plaza Premium visits (Malaysia and Singapore) — guests are NOT free, they only get about 20% off the published rate." },
+    note: "By invitation to RHB Premier customers. Best RHB conversion at 8,000 Loyalty Points per 1,000 Enrich miles. Same tiered lounge as the Visa Infinite: 3 on activation, +1 per RM1,000 month, capped at 9 unless you spend RM100,000 a year. Earn rates and insurance are not published on a reachable RHB page and are carried over unverified." },
 
-  { id: "hlb-wise", bank: "Hong Leong", name: "Wise Card", net: "Visa Platinum",
-    conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 24000,
-    base: { u: "cb", rate: 0.25 },
-    rules: [{ cats: ["dining", "groceries", "petrol"], u: "cb", rate: 8, cap: 30, min: 1500, label: "8% on two categories you select" }],
-    capTotal: 60, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN,
-    note: "You choose the bonus categories; the model assumes dining, groceries and petrol." },
+  { id: "hlb-vi", bank: "Hong Leong", name: "Infinite Card", net: "Visa Infinite",
+    conv: "enrichDirect", fee: 0, waiver: { t: "lifetime" }, income: 100000,
+    base: { u: "pts", rate: 0.167 },
+    rules: [
+      { cats: ["dining"], u: "pts", rate: 1, label: "RM1 = 1 Enrich Point on dining, uncapped" },
+      { cats: ["travelAir", "hotel", "retail", "onlineLocal", "onlineOs", "overseasRet"], u: "pts", rate: 0.25, label: "RM4 = 1 Enrich Point on travel and retail" },
+    ],
+    capTotal: null, fx: 1.00, lounge: { p: "Plaza Premium", v: 5, g: 0 }, ins: 2000000,
+    excl: EX, verified: "2026-09", signup: NOSIGN,
+    note: "Rebuilt from Hong Leong's own card page. This card earns ENRICH POINTS DIRECTLY, so it was moved off the Hong Leong Reward Points table onto the direct-Enrich one — no conversion block, no transfer fee. Published rates are RM1 = 1 point on dining (no monthly cap), RM4 = 1 on travel and retail shopping, RM6 = 1 on everything else. Free for life, income RM100,000 not RM150,000. Lounge is 4 a year plus 1 extra each card anniversary; guests are NOT free, they get about 20% off the published rate. Travel insurance RM2,000,000." },
 
-  { id: "hlb-essential", bank: "Hong Leong", name: "Essential Mastercard", net: "MC",
+  { id: "hlb-wise", bank: "Hong Leong", name: "WISE Card", net: "Visa Platinum",
+    conv: "cashOnly", fee: 98, waiver: { t: "none" }, income: 24000,
+    base: { u: "cb", rate: 0.20 },
+    rules: [
+      { cats: ["dining"], u: "cb", rate: 15, cap: 15, min: 1000, wknd: true, label: "15% on weekend dining" },
+      { cats: ["groceries"], u: "cb", rate: 10, cap: 15, min: 1000, label: "10% on groceries, essentials and pharmacies" },
+      { cats: ["petrol"], u: "cb", rate: 10, cap: 15, min: 1000, wknd: true, label: "10% on weekend petrol" },
+      { cats: ["onlineLocal", "ewallet", "bnpl"], u: "cb", rate: 1, min: 1000, label: "1% on online and e-wallet" },
+    ],
+    capTotal: 45, fx: 1.00, lounge: null, ins: 0,
+    excl: ["utilities", "insurance", "education"], verified: "2026-09", signup: NOSIGN,
+    note: "Rebuilt from Hong Leong's card page. Fee is RM98 principal (RM48 supplementary) with NO waiver programme — this database had it free for life. Entry is RM24,000 of income or a RM2,000 fixed deposit. Bonus rates need RM1,000 of retail spend that month and are capped at RM15 a category: 15% weekend dining, 10% groceries and pharmacies, 10% weekend petrol, 1% online and e-wallet, 0.2% uncapped on everything else. Bill payments and in-app QR pay are excluded." },
+
+  { id: "hlb-essential", bank: "Hong Leong", name: "Essential Credit Card", net: "MC",
     conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 24000,
     base: { u: "cb", rate: 1.00 }, rules: [],
-    capTotal: 25, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN,
-    note: "Flat rate on everything, but a low monthly ceiling." },
+    capTotal: null, fx: 1.00, lounge: null, ins: 0, excl: [], verified: "2026-09", signup: NOSIGN,
+    note: "Hong Leong publishes this as up to 1% UNLIMITED cashback, so the RM25 monthly ceiling this database applied has been removed. The rate is 1% on general retail and insurance and 0.5% on some categories including dining and government payments. Entry is RM24,000 of income or a RM2,000 fixed deposit; the first year's fee is waived under Hong Leong's fee-waiver programme, and the subsequent fee is not published on that page." },
 
   { id: "hlb-gsc", bank: "Hong Leong", name: "GSC Platinum", net: "Visa Platinum",
-    conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 24000,
+    conv: "cashOnly", fee: 0, waiver: { t: "swipes", v: 1 }, income: 24000,
     base: { u: "cb", rate: 0.25 },
     rules: [{ cats: ["entertain"], u: "cb", rate: 10, cap: 20, label: "10% cinema and entertainment" }],
-    capTotal: 25, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+    capTotal: 25, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-09", signup: NOSIGN,
+    note: "Hong Leong waives the first year's fee on one swipe within 60 days of issuance. The card earns up to 3x GSC Reward Points on GSC, online, retail and overseas spend — a points scheme, not the flat cashback modelled here, which is carried over unverified because the rate card is not on a reachable page." },
 
   { id: "amb-cashrebate", bank: "AmBank", name: "Cash Rebate Visa Platinum", net: "Visa Platinum",
     conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 24000,
     base: { u: "cb", rate: 0.20 },
     rules: [{ cats: ["petrol", "groceries"], u: "cb", rate: 5, cap: 30, min: 1500, label: "5% petrol and groceries" }],
-    capTotal: 30, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+    capTotal: 30, fx: 1.01, lounge: null, ins: 0, excl: EX, verified: "2026-09", signup: NOSIGN,
+    note: "Free for life, confirmed in AmBank's fees and charges schedule effective 11 August 2026. Earn rates are not published on a reachable AmBank page and are carried over unverified." },
 
-  { id: "amb-bonuslink-vi", bank: "AmBank", name: "BonusLink Visa Infinite", net: "Visa Infinite",
-    conv: "bonuslink", fee: 550, waiver: { t: "spend", v: 30000 }, income: 150000,
-    base: { u: "pts", rate: 1 },
-    rules: [{ cats: ["groceries", "petrol", "dining"], u: "pts", rate: 5, label: "5x BonusLink on everyday spend" }],
-    capTotal: null, fx: 1.00, lounge: { p: "Plaza Premium", v: 6, g: 0 }, ins: 1000000,
-    excl: EX, verified: "2026-05", signup: NOSIGN,
-    note: "BonusLink spends at face value in Petronas and partner stores, which usually beats the airline route." },
+  { id: "amb-bonuslink-sig", bank: "AmBank", name: "BonusLink Visa Signature", net: "Visa Signature",
+    conv: "bonuslink", fee: 550, waiver: { t: "swipes", v: 12 }, income: 80000,
+    base: { u: "pts", rate: 0.167 },
+    rules: [
+      { cats: ["petrol", "retail"], u: "pts", rate: 5, cap: 3000, label: "5 BonusLink per RM1 at Shell and Parkson" },
+      { cats: ["dining", "groceries", "onlineLocal", "onlineOs", "overseasRet"], u: "pts", rate: 2, label: "2 BonusLink per RM1 on dining, groceries, shopping and overseas" },
+    ],
+    capTotal: null, fx: 1.01, lounge: null, ins: 0, excl: EX, verified: "2026-09", signup: NOSIGN,
+    note: "Retiered from 'BonusLink Visa Infinite', which does not exist — AmBank's fee schedule and product page list only Signature, Platinum and Gold. Fee RM550, waived for the first two years and then on 12 swipes a year; income RM80,000, not RM150,000. Shell and Parkson earn is capped at 3,000 points a cycle; everything else is 1 point per RM6. No lounge or travel insurance is published for this card. BonusLink spends at face value in Petronas and partner stores, which usually beats the airline route." },
 
   { id: "amb-enrich-vi", bank: "AmBank", name: "Enrich Visa Infinite", net: "Visa Infinite",
-    conv: "enrichDirect", fee: 600, waiver: { t: "spend", v: 36000 }, income: 150000,
-    base: { u: "pts", rate: 0.20 },
-    rules: [{ cats: ["onlineOs", "overseasRet", "travelAir"], u: "pts", rate: 0.40, label: "Higher Enrich accrual on overseas and Malaysia Airlines" }],
-    capTotal: null, fx: 1.00, lounge: { p: "Plaza Premium", v: 6, g: 0 }, ins: 1000000,
-    excl: EX, verified: "2026-05", signup: NOSIGN,
-    note: "Earn rates were cut during 2025 and this card is no longer recommended by most Malaysian miles trackers." },
+    conv: "enrichDirect", fee: 500, waiver: { t: "spend", v: 100000 }, income: 100000,
+    base: { u: "pts", rate: 0.167 },
+    rules: [
+      { cats: ["onlineOs", "overseasRet", "travelAir"], u: "pts", rate: 0.50, label: "RM2 = 1 Enrich Point on overseas and Malaysia Airlines" },
+      { cats: ["utilities", "insurance", "education"], u: "pts", rate: 0.083, cap: 8000, label: "RM12 = 1 Enrich Point on utilities, insurance and education" },
+    ],
+    capTotal: null, fx: 1.01, lounge: { p: "MAS Golden Lounge", v: 999, g: 1 }, ins: 2000000,
+    excl: [], verified: "2026-09", signup: NOSIGN,
+    note: "Rebuilt from AmBank's card page and fee schedule. Fee is RM500 not RM600; the waiver is tiered — 50% at RM50,000 of annual spend, 100% at RM100,000 — and the model uses the full-waiver threshold. Income RM100,000, not RM150,000. Published rates are RM2 = 1 point on overseas and Malaysia Airlines spend, RM6 = 1 locally, RM12 = 1 on education, insurance and utilities capped at 8,000 points a cycle. Lounge is UNLIMITED Malaysia Airlines Golden Lounge for the cardholder and one guest, not 6 Plaza Premium visits. Travel insurance RM2,000,000." },
 
   { id: "amb-signature", bank: "AmBank", name: "SIGNATURE Priority Banking Visa Infinite", net: "Visa Infinite",
     conv: "amb", fee: 800, waiver: { t: "lifetime" }, income: 250000,
     base: { u: "pts", rate: 2 },
     rules: [{ cats: ["onlineOs", "overseasRet", "travelAir", "hotel"], u: "pts", rate: 6, label: "6x overseas and travel" }],
-    capTotal: null, fx: 1.00, lounge: { p: "Plaza Premium", v: 12, g: 1 }, ins: 1500000,
-    excl: EX, verified: "2026-05", signup: NOSIGN, note: "Priority Banking relationship required." },
+    capTotal: null, fx: 1.01, lounge: { p: "Plaza Premium", v: 12, g: 1 }, ins: 1500000,
+    excl: EX, verified: "2026-09", signup: NOSIGN,
+    note: "Priority Banking relationship required. AmBank's published fee schedule lists an 'M-Signature' card at RM550 but no Signature Priority Banking Visa Infinite, so this card's fee, income, earn rates and perks could NOT be verified and are carried over from the previous build. FX markup is the one figure confirmed: AmBank adds 1% on top of the scheme rate." },
 
   { id: "alli-virtual", bank: "Alliance Bank", name: "Visa Virtual Card", net: "Visa Virtual",
     conv: "alli", fee: 0, waiver: { t: "lifetime" }, income: 36000,
     base: { u: "pts", rate: 1 },
-    rules: [{ cats: ["ewallet", "onlineLocal", "insurance", "utilities"], u: "pts", rate: 8, cap: 24000, label: "Boosted rate on e-wallet and online, including insurance and utilities" }],
-    capTotal: null, fx: 1.00, lounge: null, ins: 0, excl: [], verified: "2026-05", signup: NOSIGN,
-    note: "About 0.53 Enrich miles per ringgit. Rare in earning on insurance, utilities and e-wallet. Caps near RM3,000 online and RM3,000 e-wallet a month." },
+    rules: [{ cats: ["ewallet", "bnpl", "onlineLocal", "insurance", "utilities"], u: "pts", rate: 8, cap: 24000, label: "Boosted rate on e-wallet and online, including insurance and utilities" }],
+    capTotal: null, fx: 1.00, lounge: null, ins: 0, excl: [], verified: "2026-09", signup: NOSIGN,
+    note: "Alliance's card listing confirms zero annual fee and RM24,000 minimum income for the virtual card; the earn rate and caps are not published there and are carried over unverified. About 0.53 Enrich miles per ringgit. Rare in earning on insurance, utilities and e-wallet." },
 
   { id: "alli-vi", bank: "Alliance Bank", name: "Visa Infinite", net: "Visa Infinite",
-    conv: "cashOnly", fee: 588, waiver: { t: "spend", v: 40000 }, income: 150000,
+    conv: "cashOnly", fee: 438, waiver: { t: "spend", v: 40000 }, income: 60000,
     base: { u: "cb", rate: 1.00 },
     rules: [{ cats: ["onlineOs", "overseasRet"], u: "cb", rate: 2, label: "2% on foreign currency spend" }],
     capTotal: null, fx: 1.00, lounge: { p: "Plaza Premium", v: 6, g: 0 }, ins: 1000000,
-    excl: EX, verified: "2026-05", signup: NOSIGN,
-    note: "Uncapped flat rebate, unusual in Malaysia. Suits a high but spread-out spender." },
+    excl: EX, verified: "2026-09", signup: NOSIGN,
+    note: "Fee corrected to RM438 and income to RM60,000 from Alliance's published card listing — the database had RM588 and RM150,000, which put this card out of reach of most people who actually qualify. Uncapped flat rebate, unusual in Malaysia. The waiver threshold, lounge and insurance are not published there and are carried over unverified." },
 
-  { id: "alli-younique", bank: "Alliance Bank", name: "You:nique Visa Platinum", net: "Visa Platinum",
-    conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 24000,
+  { id: "alli-younique", bank: "Alliance Bank", name: "Visa Platinum", net: "Visa Platinum",
+    conv: "cashOnly", fee: 120, waiver: { t: "lifetime" }, income: 24000,
     base: { u: "cb", rate: 0.30 },
     rules: [{ cats: ["*"], u: "cb", rate: 1.00, cap: 60, min: 3000, label: "Rebate rate you select, applied to all spend" }],
-    capTotal: 60, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+    capTotal: 60, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-09", signup: NOSIGN,
+    note: "Alliance now lists this simply as the Visa Platinum Credit Card at RM120 a year with RM24,000 minimum income; the 'You:nique' branding and the fee-free entry this database recorded are gone. Alliance waives the first year and considers later waivers on request, so the lifetime flag is optimistic." },
 
-  { id: "hsbc-live", bank: "HSBC", name: "Live+ Visa Platinum", net: "Visa Platinum",
-    conv: "cashOnly", fee: 250, waiver: { t: "swipes", v: 12 }, income: 36000,
+  { id: "hsbc-live", bank: "HSBC", name: "Live+ Credit Card", net: "Visa Platinum",
+    conv: "cashOnly", fee: 250, waiver: { t: "swipes", v: 12 }, income: 102000,
     base: { u: "cb", rate: 0.20 },
-    rules: [{ cats: ["dining", "groceries", "entertain"], u: "cb", rate: 8, cap: 50, min: 2000, label: "8% dining, groceries and entertainment" }],
-    capTotal: 50, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05",
-    signup: { value: 200, minSpend: 2000, window: 60, desc: "Up to RM200 cashback for new primary cardholders" }, note: "" },
+    rules: [
+      { cats: ["dining", "retail", "entertain"], u: "cb", rate: 5, cap: 90, min: 5000, label: "5% dining, shopping and entertainment at RM5,000 a month" },
+      { cats: ["dining", "retail", "entertain"], u: "cb", rate: 2, cap: 90, min: 2500, label: "2% at RM2,500 a month" },
+      { cats: ["dining", "retail", "entertain"], u: "cb", rate: 1, cap: 90, min: 1000, label: "1% at RM1,000 a month" },
+      { cats: ["onlineOs", "overseasRet"], u: "cb", rate: 0.50, label: "0.5% uncapped on overseas spend" },
+    ],
+    capTotal: 90, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-09",
+    signup: { value: 200, minSpend: 2000, window: 60, desc: "Up to RM200 cashback for new primary cardholders" },
+    note: "Rebuilt from HSBC's card page. Income is RM102,000, not RM36,000 — this is a far harder card to get than the database implied. The bonus rate is tiered on monthly spend (1% / 2% / 5%) and capped at RM30 a month PER CATEGORY across dining, shopping and entertainment, so RM90 in total. Base earn is 0.2% locally and 0.5% overseas, both uncapped. The extra 3% promotional cashback expired on 30 June 2025." },
 
   { id: "hsbc-amanah-mpower", bank: "HSBC Amanah", name: "MPower Platinum Card-i", net: "Visa Platinum",
     conv: "cashOnly", fee: 240, waiver: { t: "swipes", v: 12 }, income: 36000,
     base: { u: "cb", rate: 0.20 },
-    rules: [{ cats: ["petrol", "groceries", "ewallet"], u: "cb", rate: 8, cap: 50, min: 2000, label: "8% e-wallet, petrol and groceries" }],
+    rules: [{ cats: ["petrol", "groceries", "ewallet", "bnpl"], u: "cb", rate: 8, cap: 50, min: 2000, label: "8% e-wallet, petrol and groceries" }],
     capTotal: 50, fx: 1.00, lounge: null, ins: 0, excl: ["utilities", "insurance", "education"], verified: "2026-05",
-    signup: { value: 200, minSpend: 2000, window: 60, desc: "Up to RM200 cashback for new primary cardholders" }, note: "" },
+    signup: { value: 200, minSpend: 2000, window: 60, desc: "Up to RM200 cashback for new primary cardholders" },
+    note: "UNVERIFIED — hsbcamanah.com.my is blocked by the network egress proxy in this environment, so nothing on this card could be re-read in the September 2026 refresh." },
 
   { id: "hsbc-travelone", bank: "HSBC", name: "TravelOne Credit Card", net: "Visa Signature",
-    conv: "hsbc", fee: 0, waiver: { t: "lifetime" }, income: 100000,
+    conv: "hsbc", fee: 0, waiver: { t: "lifetime" }, income: 102000,
     base: { u: "pts", rate: 1 },
     rules: [
       { cats: ["onlineOs", "overseasRet"], u: "pts", rate: 8, label: "8x on all foreign currency spend" },
-      { cats: ["travelAir", "hotel", "dining"], u: "pts", rate: 5, label: "5x on local travel and dining" },
+      { cats: ["travelAir", "hotel"], u: "pts", rate: 5, label: "5x on local travel" },
+      { cats: ["dining"], u: "pts", rate: 5, label: "5x on local dining" },
     ],
     capTotal: null, fx: 1.00, lounge: { p: "Plaza Premium", v: 6, g: 0, sup: true }, ins: 1000000,
     excl: EX, verified: "2026-09", signup: NOSIGN,
-    note: "No annual fee in Malaysia as of 2026. Six Plaza Premium passes at KLIA, Changi and Hong Kong, and unusually the pool is SHARED with the supplementary cardholder — so a partner can use it without a second card. Transfers to Malaysia Airlines, airasia, Singapore Airlines and hotel programmes including Marriott Bonvoy, IHG and Accor." },
+    note: "Earn rates and the shared lounge pool confirmed on HSBC's own card page; income is RM102,000. The six Plaza Premium visits are a COMBINED pool for the principal and supplementary cardholder, so a partner can use it without a second card. The annual fee and the travel insurance figure are not stated on that page — HSBC puts them in a separate downloadable schedule that could not be reached — so both are carried over unverified." },
 
   { id: "hsbc-premier-vi", bank: "HSBC", name: "Premier World Mastercard", net: "World MC",
-    conv: "hsbc", fee: 600, waiver: { t: "lifetime" }, income: 250000,
+    conv: "hsbc", fee: 600, waiver: { t: "lifetime" }, income: 0,
     base: { u: "pts", rate: 1 },
     rules: [
-      { cats: ["retail", "dining"], u: "pts", rate: 8, cap: 8000, label: "Boosted rate on local contactless, capped near RM1,000 a month" },
-      { cats: ["groceries", "onlineLocal"], u: "pts", rate: 5, cap: 5000, label: "Boosted rate on groceries and online" },
+      { cats: ["onlineOs", "overseasRet"], u: "pts", rate: 10, label: "10x on overseas spend" },
+      { cats: ["retail", "dining"], u: "pts", rate: 8, label: "8x on contactless payments" },
+      { cats: ["groceries", "onlineLocal"], u: "pts", rate: 5, label: "5x on groceries and online shopping" },
     ],
-    capTotal: null, fx: 1.00, lounge: { p: "Priority Pass", v: 12, g: 1 }, ins: 1500000,
-    excl: EX, verified: "2026-05", signup: NOSIGN,
-    note: "Bonus rates are capped at roughly RM1,000 per category per month, after which earning collapses. Requires Premier status." },
+    capTotal: null, fx: 1.00, lounge: { p: "Plaza Premium", v: 6, g: 0 }, ins: 2000000,
+    excl: EX, verified: "2026-09", signup: NOSIGN,
+    note: "Rebuilt from HSBC's card page. There is no income test — entry is an HSBC Premier relationship balance of RM300,000, so income is set to zero and the relationship requirement noted here instead. Published rates are 10x overseas (plus a further 5x if you hold Premier eligibility each month), 8x contactless and 5x groceries and online, with no stated cap — the per-category caps this database recorded are not published. Lounge is 6 Plaza Premium passes at KLIA1, Singapore and Hong Kong, not 12 Priority Pass. Travel insurance is USD500,000, shown here as roughly RM2,000,000." },
 
-  { id: "sc-journey", bank: "Standard Chartered", name: "Journey Credit Card", net: "Visa Platinum",
-    conv: "sc", fee: 600, waiver: { t: "spend", v: 60000 }, income: 36000,
-    base: { u: "pts", rate: 1 },
+  { id: "sc-journey", bank: "Standard Chartered", name: "Journey Credit Card", net: "Mastercard",
+    conv: "milesDirect", fee: 600, waiver: { t: "spend", v: 60000 }, income: 96000,
+    base: { u: "pts", rate: 0.50 },
     rules: [
-      { cats: ["dining"], u: "pts", rate: 8, label: "Boosted dining rate, uncapped" },
-      { cats: ["onlineLocal", "onlineOs", "overseasRet"], u: "pts", rate: 15, cap: 15000, min: 500, label: "15x points online and overseas" },
+      { cats: ["dining", "travelAir", "hotel", "onlineOs", "overseasRet"], u: "pts", rate: 2.50, label: "5x SC Miles on dining, travel and overseas — 2.5 air miles per RM1" },
     ],
-    capTotal: null, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05",
+    capTotal: null, fx: 1.01, lounge: { p: "Plaza Premium", v: 999, g: 0 }, ins: 400000,
+    excl: EX, verified: "2026-09",
     signup: { value: 150, minSpend: 1500, window: 60, desc: "Welcome cashback or gift" },
-    note: "Around 0.50 miles per ringgit on dining and on overseas spend, and dining is not capped. The RM600 fee is waived in year one for new customers, then needs RM60,000 of annual spend. SC also adds a 1% administration fee on foreign currency on top of the network rate." },
+    note: "Rebuilt from Standard Chartered's own card page. Income is RM96,000, not RM36,000. It earns SC Miles that convert at 2 SC Miles to 1 air mile, so the headline 5x on dining, travel and overseas is 2.5 air miles per ringgit — modelled directly rather than through the 360° Rewards points table. Lounge is UNLIMITED Plaza Premium at KLIA and klia2 on an international boarding pass, which the database did not record at all. SC adds a 1% administration fee on foreign currency. Travel medical cover is USD100,000, shown here as roughly RM400,000." },
 
-  { id: "sc-simplycash", bank: "Standard Chartered", name: "Simply Cash Visa Platinum", net: "Visa Platinum",
-    conv: "cashOnly", fee: 250, waiver: { t: "swipes", v: 12 }, income: 36000,
-    base: { u: "cb", rate: 1.50 }, rules: [],
-    capTotal: null, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN,
-    note: "Uncapped flat rebate. A sound baseline card to sit under a specialist." },
+  { id: "sc-simplycash", bank: "Standard Chartered", name: "Simply Cash Credit Card", net: "Visa Platinum",
+    conv: "cashOnly", fee: 250, waiver: { t: "swipes", v: 12 }, income: 96000,
+    base: { u: "cb", rate: 0.50 },
+    rules: [
+      { cats: ["petrol", "groceries", "dining"], u: "cb", rate: 15, cap: 40, min: 2500, label: "Up to 15% on petrol, groceries and dining at selected merchants" },
+    ],
+    capTotal: 40, fx: 1.01, lounge: null, ins: 0,
+    excl: ["utilities", "insurance", "education"], verified: "2026-09", signup: NOSIGN,
+    note: "Rebuilt from Standard Chartered's card page: this is NOT an uncapped 1.5% flat-rebate card. Base rate is 0.5% capped at RM10 a month below RM2,500 of spend; above RM2,500 selected petrol, grocery and dining merchants pay up to 15%, capped at RM20 each for petrol and for grocery-plus-dining, RM40 in total. Income RM96,000. First year free, RM250 after. SC adds 1% on foreign currency." },
 
   { id: "sc-worldmiles", bank: "Standard Chartered", name: "WorldMiles World Mastercard", net: "World MC",
     conv: "milesDirect", fee: 600, waiver: { t: "spend", v: 36000 }, income: 100000,
     base: { u: "pts", rate: 0.20 },
     rules: [{ cats: ["onlineOs", "overseasRet", "travelAir", "hotel"], u: "pts", rate: 0.60, label: "Boosted miles on overseas and travel" }],
-    capTotal: null, fx: 1.00, lounge: { p: "Plaza Premium", v: 6, g: 0 }, ins: 1000000,
-    excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+    capTotal: null, fx: 1.01, lounge: { p: "Plaza Premium", v: 6, g: 0 }, ins: 1000000,
+    excl: EX, verified: "2026-09", signup: NOSIGN,
+    note: "UNVERIFIED apart from the 1% foreign-currency administration fee. Standard Chartered no longer lists a WorldMiles card among its current Malaysian cards — the featured range is Journey, Simply Cash, Platinum Basic and the two Beyond tiers — so this card may have been withdrawn. Confirm it still exists before relying on any figure here." },
 
-  { id: "sc-priority-vi", bank: "Standard Chartered", name: "Priority Visa Infinite", net: "Visa Infinite",
-    conv: "sc", fee: 800, waiver: { t: "lifetime" }, income: 250000,
+  { id: "sc-priority-vi", bank: "Standard Chartered", name: "Beyond Credit Card (Priority Banking)", net: "Visa Infinite",
+    conv: "sc", fee: 800, waiver: { t: "lifetime" }, income: 0,
     base: { u: "pts", rate: 2 },
     rules: [{ cats: ["onlineOs", "overseasRet", "travelAir", "hotel"], u: "pts", rate: 6, label: "6x overseas and travel" }],
-    capTotal: null, fx: 1.00, lounge: { p: "Priority Pass", v: 12, g: 1 }, ins: 1500000,
-    excl: EX, verified: "2026-05", signup: NOSIGN,
-    note: "Includes complimentary overseas limousine transfers at the Priority Private tier." },
+    capTotal: null, fx: 1.01, lounge: { p: "Priority Pass", v: 12, g: 1 }, ins: 1500000,
+    excl: EX, verified: "2026-09", signup: NOSIGN,
+    note: "Renamed: Standard Chartered's current premium card is the Beyond Credit Card. Entry is by assets under management, not income — RM350,000 a month for the Priority Banking tier and RM3,000,000 for Priority Private — so income is set to zero. The fee, earn rates, lounge and insurance below are NOT published on a reachable page and are carried over from the previous build unverified." },
 
-  { id: "uob-one", bank: "UOB", name: "One Card", net: "Visa Platinum",
-    conv: "cashOnly", fee: 195, waiver: { t: "swipes", v: 12 }, income: 30000,
+  { id: "uob-one", bank: "UOB", name: "ONE Platinum Card", net: "Visa Platinum",
+    conv: "cashOnly", fee: 195, waiver: { t: "spend", v: 20000 }, income: 36000,
     base: { u: "cb", rate: 0.20 },
     rules: [
-      { cats: ["groceries", "dining", "petrol", "transport"], u: "cb", rate: 8, cap: 80, min: 2500, label: "Top tier, 8% on everyday categories" },
-      { cats: ["groceries", "dining", "petrol", "transport"], u: "cb", rate: 3, cap: 30, min: 1000, label: "Mid tier, 3%" },
+      { cats: ["groceries", "dining", "petrol", "transport"], u: "cb", rate: 10, cap: 15, min: 1500, label: "10% on petrol, groceries, dining and Grab" },
     ],
-    capTotal: 80, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05",
+    capTotal: 60, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-09",
     signup: { value: 138, minSpend: 500, window: 60, desc: "Up to RM138 welcome cashback, plus RM50 for setting up a recurring payment" },
-    note: "Minimum spend tiers are assessed quarterly in reality; the model checks them monthly." },
+    note: "UOB's page caps the bonus rate at RM15 a month PER CATEGORY, not RM80 across the card as this database previously had it, and the unlock is RM1,500 a statement cycle. Everything outside the four bonus categories earns 0.2% uncapped. The Classic variant is a separate card: RM120 fee, RM15,000 waiver, RM800 unlock." },
 
   { id: "uob-evol", bank: "UOB", name: "EVOL Card", net: "Visa Platinum",
-    conv: "cashOnly", fee: 195, waiver: { t: "swipes", v: 12 }, income: 30000,
+    conv: "cashOnly", fee: 90, waiver: { t: "swipes", v: 12 }, income: 36000,
     base: { u: "cb", rate: 0.20 },
-    rules: [{ cats: ["onlineLocal", "onlineOs", "ewallet", "entertain"], u: "cb", rate: 8, cap: 50, min: 2500, label: "8% online, e-wallet and entertainment" }],
-    capTotal: 50, fx: 1.00, lounge: null, ins: 0, excl: ["utilities", "insurance", "education"], verified: "2026-05",
-    signup: { value: 138, minSpend: 500, window: 60, desc: "Up to RM138 welcome cashback" }, note: "" },
+    rules: [
+      { cats: ["onlineLocal", "onlineOs", "entertain"], u: "cb", rate: 10, cap: 15, min: 1000, label: "10% on online spend" },
+      { cats: ["ewallet", "bnpl"], u: "cb", rate: 5, cap: 15, min: 1000, label: "5% on e-wallet reloads" },
+    ],
+    capTotal: 30, fx: 1.00, lounge: null, ins: 0, excl: ["utilities", "insurance", "education"], verified: "2026-09",
+    signup: { value: 88, minSpend: 0, window: 60, desc: "RM88 cashback plus a one-year fee waiver" },
+    note: "Billed RM7.50 a statement month (RM90 a year), waived by one retail transaction that month, so in practice it is free if you use it. Rates effective 1 January 2026: 10% online capped RM15, 5% e-wallet capped RM15, both needing RM1,000 a month." },
 
   { id: "uob-world", bank: "UOB", name: "World Card", net: "World MC",
-    conv: "uobStd", fee: 195, waiver: { t: "swipes", v: 12 }, income: 60000,
+    conv: "uobStd", fee: 600, waiver: { t: "swipes", v: 12 }, income: 60000,
     base: { u: "pts", rate: 1 },
-    rules: [{ cats: ["ewallet"], u: "pts", rate: 8, cap: 7200, label: "Boosted rate on e-wallet reloads" }],
-    capTotal: null, fx: 2.25, lounge: null, ins: 0, excl: ["utilities", "insurance", "education"], verified: "2026-05",
+    rules: [{ cats: ["ewallet", "bnpl"], u: "pts", rate: 8, cap: 7200, label: "Boosted rate on e-wallet reloads" }],
+    capTotal: null, fx: 2.25, lounge: null, ins: 0, excl: ["utilities", "insurance", "education"], verified: "2026-09",
     signup: NOSIGN,
-    note: "About 0.66 miles per ringgit on e-wallet, but capped near RM300 each for Touch 'n Go, Boost and BigPay." },
+    note: "Fee corrected to RM600 from UOB's published annual-fee table (the database had RM195, the Preferred card's fee). About 0.66 miles per ringgit on e-wallet, but capped near RM300 each for Touch 'n Go, Boost and BigPay." },
 
   { id: "uob-prvi-elite", bank: "UOB", name: "PRVI Miles Elite Card", net: "World MC",
     conv: "uobStd", fee: 600, waiver: { t: "spend", v: 50000 }, income: 100000,
@@ -620,116 +796,123 @@ const CARDS = [
     capTotal: null, fx: 2.25, lounge: { p: "Plaza Premium", v: 8, g: 0 }, ins: 300000,
     excl: EX, verified: "2026-09",
     signup: { value: 500, minSpend: 0, window: 0, desc: "60,000 bonus UNIRinggit credited each year on payment of the annual fee" },
-    note: "0.83 miles per ringgit on foreign currency, rising to 1.00 in Singapore, Thailand, Vietnam and Indonesia where the rate is 12x — the model uses the 10x rest-of-world rate, so regional trips beat what you see here. The fee rose to RM600 and the waiver to RM50,000 a year from 1 January 2026." },
+    note: "0.83 miles per ringgit on foreign currency, rising to 1.00 in Singapore, Thailand, Vietnam and Indonesia where the rate is 12x — the model uses the 10x rest-of-world rate, so regional trips beat what you see here. UOB's terms (effective 1 September 2026) put no cap on the bonus rates. Lounge is 8 visits, one admission a day." },
 
   { id: "uob-vi", bank: "UOB", name: "Visa Infinite", net: "Visa Infinite",
-    conv: "uobStd", fee: 600, waiver: { t: "spend", v: 40000 }, income: 150000,
+    conv: "uobStd", fee: 600, waiver: { t: "spend", v: 50000 }, income: 120000,
     base: { u: "pts", rate: 1 },
     rules: [
       { cats: ["onlineOs", "overseasRet"], u: "pts", rate: 10, label: "10x UNIRinggit overseas" },
-      { cats: ["dining"], u: "pts", rate: 5, label: "5x UNIRinggit on dining" },
+      { cats: ["dining"], u: "pts", rate: 5, min: 1000, label: "5x UNIRinggit on dining, needs RM1,000 a month" },
     ],
-    capTotal: null, fx: 2.25, lounge: { p: "Plaza Premium", v: 8, g: 1 }, ins: 1000000,
-    excl: EX, verified: "2026-05", signup: NOSIGN,
-    note: "0.83 miles per ringgit overseas, 0.41 on dining. No conversion fee at this tier." },
+    capTotal: null, fx: 2.25, lounge: { p: "Plaza Premium", v: 12, g: 0 }, ins: 500000,
+    excl: EX, verified: "2026-09", signup: { value: 88, minSpend: 0, window: 60, desc: "RM88 cashback plus a one-year fee waiver" },
+    note: "Corrected against UOB's card page: income is RM120,000 not RM150,000, the waiver is RM50,000 from 1 January 2026, lounge access is 12 visits not 8, and travel insurance is RM500,000 not RM1,000,000. The 5x dining rate needs RM1,000 of spend that month." },
 
   { id: "uob-vi-metal", bank: "UOB", name: "Visa Infinite Metal Card", net: "Visa Infinite",
     conv: "uobMetal", fee: 3000, waiver: { t: "none" }, income: 200000,
-    base: { u: "pts", rate: 2 },
-    rules: [{ cats: ["onlineOs", "overseasRet", "travelAir", "hotel"], u: "pts", rate: 10, label: "10x UNIRinggit overseas and travel" }],
-    capTotal: null, fx: 2.25, lounge: { p: "Plaza Premium", v: 12, g: 0, sup: false }, ins: 2000000,
-    excl: EX, verified: "2026-09", signup: NOSIGN,
-    note: "2.00 miles per ringgit overseas, the highest in Malaysia, on a 5,000 UNIRinggit conversion. Requires roughly RM3 million in assets under management. Lounge was cut hard in 2026: unlimited became 12 visits a year on 1 June, and supplementary cardholders lost access entirely on 1 March." },
+    base: { u: "pts", rate: 1 },
+    rules: [
+      { cats: ["onlineOs", "overseasRet"], u: "pts", rate: 10, label: "10x UNIRinggit overseas" },
+      { cats: ["dining"], u: "pts", rate: 5, min: 1000, label: "5x UNIRinggit on dining, needs RM1,000 a month" },
+    ],
+    capTotal: null, fx: 2.25, lounge: { p: "DragonPass", v: 999, g: 1, sup: true }, ins: 1000000,
+    excl: EX, verified: "2026-09",
+    signup: { value: 3000, minSpend: 0, window: 0, desc: "300,000 bonus UNIRinggit credited each year on payment of the RM3,000 annual fee" },
+    note: "By invitation only. UOB's own page contradicts the 2026 'lounge cut' this database previously recorded: access is unlimited through DragonPass for the cardholder AND one guest, and supplementary cardholders keep the same unlimited entitlement. Travel insurance is RM1,000,000, not RM2,000,000. Base earn corrected to 1x; the 300,000 UNIRinggit annual bonus is modelled as the signup value instead." },
 
-  { id: "uob-ladys", bank: "UOB", name: "Lady's Solitaire Metal Card", net: "World MC",
-    conv: "uobStd", fee: 800, waiver: { t: "spend", v: 40000 }, income: 100000,
+  { id: "uob-ladys", bank: "UOB", name: "Lady's Solitaire Card", net: "World MC",
+    conv: "uobStd", fee: 300, waiver: { t: "spend", v: 40000 }, income: 100000,
     base: { u: "pts", rate: 1 },
     rules: [{ cats: ["retail", "onlineLocal"], u: "pts", rate: 6, cap: 12000, label: "Boosted rate on fashion and retail, capped near RM2,000" }],
     capTotal: null, fx: 2.25, lounge: { p: "Plaza Premium", v: 4, g: 0 }, ins: 500000,
-    excl: EX, verified: "2026-05", signup: NOSIGN,
-    note: "About 0.50 miles per ringgit on fashion. Issued to women only." },
+    excl: EX, verified: "2026-09", signup: NOSIGN,
+    note: "Fee corrected to RM300 from UOB's published annual-fee table (the database had RM800). About 0.50 miles per ringgit on fashion. Issued to women only. Earn rates and lounge are NOT published on a reachable UOB page and are carried over unverified." },
 
   { id: "uob-lazada", bank: "UOB", name: "Lazada Card", net: "Platinum MC",
-    conv: "uobStd", fee: 195, waiver: { t: "swipes", v: 12 }, income: 30000,
+    conv: "uobStd", fee: 100, waiver: { t: "swipes", v: 12 }, income: 30000,
     base: { u: "pts", rate: 1 },
     rules: [{ cats: ["onlineLocal", "insurance", "utilities"], u: "pts", rate: 4, cap: 6000, label: "Boosted rate on Lazada, insurance and telco" }],
-    capTotal: null, fx: 2.25, lounge: null, ins: 0, excl: ["education"], verified: "2026-05", signup: NOSIGN,
-    note: "About 0.36 miles per ringgit. Caps of roughly RM500 each for insurance and telco, Lazada, and selected online spend." },
+    capTotal: null, fx: 2.25, lounge: null, ins: 0, excl: ["education"], verified: "2026-09", signup: NOSIGN,
+    note: "Fee corrected to RM100 from UOB's published annual-fee table. About 0.36 miles per ringgit. Caps of roughly RM500 each for insurance and telco, Lazada, and selected online spend — not published on a reachable page, carried over unverified." },
 
   { id: "ocbc-titanium", bank: "OCBC", name: "Titanium Mastercard", net: "Titanium MC",
-    conv: "ocbc", fee: 200, waiver: { t: "swipes", v: 12 }, income: 36000,
+    conv: "ocbc", fee: 75, waiver: { t: "spend", v: 20000 }, income: 48000,
     base: { u: "pts", rate: 1 },
-    rules: [{ cats: ["dining", "onlineLocal", "onlineOs", "overseasRet"], u: "pts", rate: 5, cap: 10000, label: "5x dining, online and overseas" }],
-    capTotal: null, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+    rules: [{ cats: ["onlineLocal", "onlineOs", "ewallet", "bnpl", "overseasRet"], u: "pts", rate: 6, cap: 20000, label: "6x on online and e-wallet spend" }],
+    capTotal: null, fx: 1.25, lounge: null, ins: 0, excl: EX, verified: "2026-09", signup: NOSIGN,
+    note: "Corrected against OCBC's card page: fee RM75 waived at RM20,000 of annual spend, income RM48,000. The bonus rate is 6x OCBC$ on online and e-wallet spend, doubling to 12x on Double Dates (1.1, 2.2 and so on) and on payday, the 25th — the model uses the everyday 6x. Bonus earn is capped at 20,000 OCBC$ a cycle, after which it drops to 1x. OCBC adds a 1.25% administration charge on foreign currency." },
 
   { id: "ocbc-cashflo", bank: "OCBC", name: "Cashflo Mastercard", net: "Platinum MC",
-    conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 36000,
-    base: { u: "cb", rate: 1.00 }, rules: [],
-    capTotal: 50, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN,
-    note: "Converts larger purchases to instalments automatically. A cash-flow tool more than a rewards card." },
+    conv: "cashOnly", fee: 188, waiver: { t: "spend", v: 20000 }, income: 48000,
+    base: { u: "cb", rate: 0 }, rules: [],
+    capTotal: 0, fx: 1.25, lounge: null, ins: 0, excl: EX, verified: "2026-09", signup: NOSIGN,
+    note: "Corrected against OCBC's card page: fee RM188 (supplementary RM68), first year waived, later years waived at RM20,000 of annual spend, income RM48,000. OCBC publishes NO cashback or rewards programme for this card — the 1% flat rebate this database recorded is not supported. It automatically converts purchases over RM500 to 3- or 6-month interest-free instalments; it is a cash-flow tool, not a rewards card, and the earn rate is set to zero to reflect that." },
 
   { id: "ocbc-great-eastern", bank: "OCBC", name: "Great Eastern Platinum", net: "Visa Platinum",
-    conv: "ocbc", fee: 250, waiver: { t: "swipes", v: 12 }, income: 36000,
+    conv: "ocbc", fee: 138, waiver: { t: "swipes", v: 12 }, income: 36000,
     base: { u: "pts", rate: 1 },
     rules: [{ cats: ["insurance"], u: "pts", rate: 3, label: "3x on Great Eastern premiums" }],
-    capTotal: null, fx: 1.00, lounge: null, ins: 0, excl: ["utilities", "education"], verified: "2026-05", signup: NOSIGN, note: "" },
+    capTotal: null, fx: 1.25, lounge: null, ins: 0, excl: ["utilities", "education"], verified: "2026-09", signup: NOSIGN,
+    note: "Fee corrected to RM138 from OCBC's published fees and charges table, and the FX markup to OCBC's 1.25% administration charge. Income, waiver and the 3x premium rate are not published on a reachable page and are carried over unverified." },
 
-  { id: "affin-duo", bank: "Affin Bank", name: "Duo Visa & Amex", net: "Visa + Amex",
-    conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 24000,
+  { id: "affin-duo", bank: "Affin Bank", name: "Duo Visa & Mastercard", net: "Visa + MC",
+    conv: "cashOnly", fee: 75, waiver: { t: "swipes", v: 12 }, income: 24000,
     base: { u: "cb", rate: 0.25 },
-    rules: [{ cats: ["*"], u: "cb", rate: 5, cap: 50, wknd: true, label: "5% weekend cashback on the Amex face" }],
-    capTotal: 50, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+    rules: [{ cats: ["*"], u: "cb", rate: 5, cap: 50, wknd: true, label: "5% weekend cashback on the cash-back face" }],
+    capTotal: 50, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-09", signup: NOSIGN,
+    note: "Fee corrected to RM75 in year one and RM30 after, waived on 12 swipes, from Affin's published fees and charges schedule; the database had it free for life. Affin's DUO pairs a Visa Cash Back face with a Mastercard Rewards face — not an Amex. The cashback rate and cap are not published there and are carried over unverified." },
 
   { id: "affin-invikta", bank: "Affin Bank", name: "Invikta World Mastercard", net: "World MC",
-    conv: "affin", fee: 600, waiver: { t: "spend", v: 30000 }, income: 150000,
+    conv: "affin", fee: 500, waiver: { t: "spend", v: 100000 }, income: 180000,
     base: { u: "pts", rate: 1 },
     rules: [{ cats: ["onlineOs", "overseasRet", "travelAir", "hotel"], u: "pts", rate: 5, label: "5x overseas and travel" }],
     capTotal: null, fx: 1.00, lounge: { p: "Plaza Premium", v: 6, g: 0 }, ins: 1000000,
-    excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+    excl: EX, verified: "2026-09", signup: NOSIGN,
+    note: "Corrected against Affin's fees and charges schedule: RM500 in year one and RM400 after, waived at RM100,000 of annual spend or 12 swipes, with a minimum income of RM180,000 — well above the RM150,000 this database recorded. Earn rates, lounge and insurance are not published there and are carried over unverified." },
 
-  { id: "bi-vi", bank: "Bank Islam", name: "Visa Infinite-i", net: "Visa Infinite",
-    conv: "islam", fee: 500, waiver: { t: "spend", v: 30000 }, income: 120000,
+  { id: "bi-vi", bank: "Bank Islam", name: "Visa Infinite Credit Card-i", net: "Visa Infinite",
+    conv: "islam", fee: 150, waiver: { t: "swipes", v: 12 }, income: 120000,
     base: { u: "pts", rate: 1 },
     rules: [{ cats: ["onlineOs", "overseasRet", "travelAir"], u: "pts", rate: 3, label: "3x overseas and travel" }],
     capTotal: null, fx: 1.00, lounge: { p: "Plaza Premium", v: 4, g: 0 }, ins: 500000,
-    excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+    excl: EX, verified: "2026-09", signup: NOSIGN,
+    note: "Fee corrected to RM150 after a free first year, from Bank Islam's published Credit Card-i fee schedule; the database had RM500 with an RM30,000 spend waiver. Bank Islam's lounge rule is one card per person per visit per day, three hours maximum. Income, earn rates and insurance are not published on a reachable page and are carried over unverified." },
 
   { id: "bi-plat", bank: "Bank Islam", name: "Platinum Card-i", net: "Visa Platinum",
-    conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 36000,
-    base: { u: "cb", rate: 0.50 },
-    rules: [{ cats: ["petrol", "groceries"], u: "cb", rate: 3, cap: 25, label: "3% petrol and groceries" }],
-    capTotal: 25, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
-
-  { id: "br-plat", bank: "Bank Rakyat", name: "Platinum Card-i", net: "Visa Platinum",
-    conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 30000,
-    base: { u: "cb", rate: 0.50 },
-    rules: [{ cats: ["petrol", "groceries", "dining"], u: "cb", rate: 3, cap: 30, min: 1000, label: "3% on everyday categories" }],
-    capTotal: 30, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
-
-  { id: "bsn-plat", bank: "BSN", name: "Visa Platinum", net: "Visa Platinum",
     conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 24000,
     base: { u: "cb", rate: 0.50 },
-    rules: [{ cats: ["petrol"], u: "cb", rate: 3, cap: 20, label: "3% petrol" }],
-    capTotal: 20, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+    rules: [{ cats: ["petrol", "groceries"], u: "cb", rate: 3, cap: 25, label: "3% petrol and groceries" }],
+    capTotal: 25, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-09", signup: NOSIGN,
+    note: "Income corrected to RM24,000, the entry requirement Bank Islam publishes for its Credit Card-i range. Fee and earn rates are carried over unverified." },
 
-  { id: "mbsb-plat", bank: "MBSB Bank", name: "Platinum Card-i", net: "Visa Platinum",
-    conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 36000,
-    base: { u: "cb", rate: 0.60 },
-    rules: [{ cats: ["groceries", "dining"], u: "cb", rate: 2, cap: 25, label: "2% groceries and dining" }],
-    capTotal: 25, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+  { id: "br-plat", bank: "Bank Rakyat", name: "Platinum Card-i", net: "Visa Platinum",
+    conv: "cashOnly", fee: 388, waiver: { t: "swipes", v: 1 }, income: 30000,
+    base: { u: "cb", rate: 0.50 },
+    rules: [{ cats: ["petrol", "groceries", "dining"], u: "cb", rate: 3, cap: 30, min: 1000, label: "3% on everyday categories" }],
+    capTotal: 30, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-09", signup: NOSIGN,
+    note: "Fee corrected to RM388 principal (RM150 supplementary), waived in later years on a single card use, from Bank Rakyat's product disclosure sheet — the database had it free for life with no conditions. Income and earn rates are carried over unverified; note Bank Rakyat's Platinum Explorer variant asks RM60,000." },
+
+  { id: "bsn-plat", bank: "BSN", name: "Platinum Credit Card", net: "Visa Platinum",
+    conv: "cashOnly", fee: 0, waiver: { t: "lifetime" }, income: 48000,
+    base: { u: "cb", rate: 0.50 },
+    rules: [{ cats: ["petrol"], u: "cb", rate: 3, cap: 20, label: "3% petrol" }],
+    capTotal: 20, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-09", signup: NOSIGN,
+    note: "Income corrected to RM48,000 from BSN's card page; the database had RM24,000. BSN's separate AIAFAM Visa Platinum asks RM32,000 and charges no annual fee. Fee and earn rates here are carried over unverified." },
 
   { id: "aeon-gold", bank: "AEON Credit", name: "Gold Visa / Mastercard", net: "Gold",
     conv: "aeon", fee: 0, waiver: { t: "lifetime" }, income: 18000,
     base: { u: "pts", rate: 1 },
     rules: [{ cats: ["groceries", "retail"], u: "pts", rate: 3, label: "3x at AEON stores" }],
     capTotal: null, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN,
-    note: "Lowest income barrier here, which makes it a reasonable first card for building credit history." },
+    note: "UNVERIFIED — aeoncredit.com.my could not be reached from this environment, so nothing on this card was re-checked in the September 2026 refresh. Lowest income barrier here, which makes it a reasonable first card for building credit history." },
 
   { id: "aeon-plat", bank: "AEON Credit", name: "Platinum Visa", net: "Visa Platinum",
     conv: "aeon", fee: 0, waiver: { t: "lifetime" }, income: 36000,
     base: { u: "pts", rate: 1 },
     rules: [{ cats: ["groceries", "retail", "dining"], u: "pts", rate: 5, cap: 8000, label: "5x at AEON and selected merchants" }],
-    capTotal: null, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN, note: "" },
+    capTotal: null, fx: 1.00, lounge: null, ins: 0, excl: EX, verified: "2026-05", signup: NOSIGN,
+    note: "UNVERIFIED — aeoncredit.com.my could not be reached from this environment." },
 ];
 
 /* ---------------------------------------------------------------------------
@@ -750,6 +933,25 @@ const DEFAULT_ASSUM = {
   horizon: 5,
   applyDeval: true,
   tripMonths: 2,   // months of the year your flights and hotels actually land in
+  // Third-party rail fee charged on loan instalments paid by card, as a
+  // percentage of the amount paid. CardUp Malaysia's published rate is 2.6%
+  // plus 8% SST on the fee itself, so 2.81% all-in; jomSETTLE charges 2.5%.
+  // Maybank cardholders on the CardUp promotion pay 1.4%, or 0% on the first
+  // RM6,000 — drop this to 0 to model that.
+  loanFeePct: 2.81,
+  // Whether a SPayLater or GrabPayLater repayment earns rewards. Malaysian
+  // cardholders report this BOTH ways, so it is a setting, not a fact:
+  //   false — the bank sees a stored-value load and pays nothing on most cards.
+  //           In Singapore, Shopee's repayment MCC moved from 5999 to 6540 and
+  //           the descriptor became "ShopeePay", which most issuers exclude;
+  //           at least one Malaysian cardholder reports the same on Amex.
+  //   true  — the charge codes as ordinary online retail and earns the card's
+  //           online rate. Other Malaysian cardholders report earning cashback
+  //           on SPayLater repayments, so this is not a fringe case.
+  // Neither provider charges a fee to settle the bill on time, and none is
+  // modelled here; a wallet TOP-UP fee is a separate thing this does not cover.
+  // Default is the conservative side. Check one statement and set it.
+  bnplEarns: false,
 };
 
 const DEFAULT_PROFILE = {
@@ -797,8 +999,15 @@ function valueRoutes(convKey, convOverrides, mileVals) {
    ------------------------------------------------------------------------- */
 function earnMonth(card, monthSpend, A, pv) {
   const excl = new Set(card.excl || []);
+  // How a BNPL repayment codes at the bank is genuinely contested in Malaysia,
+  // so it is a setting rather than a hard-coded guess. See A.bnplEarns.
+  const bnplRetail = !!A.bnplEarns;
+  const isExcluded = (key) => (key === "bnpl" && bnplRetail) ? false : excl.has(key);
+  // When BNPL is treated as retail it matches the card's online-shopping rules,
+  // because that is what the Shopee or Grab charge looks like on the statement.
+  const ruleKey = (key) => (key === "bnpl" && bnplRetail) ? "onlineLocal" : key;
   let qual = 0;
-  CATS.forEach((c) => { if (!excl.has(c.key)) qual += monthSpend[c.key] || 0; });
+  CATS.forEach((c) => { if (!isExcluded(c.key)) qual += monthSpend[c.key] || 0; });
 
   const capUsed = {};
   let cbMonth = 0, ptsMonth = 0;
@@ -807,10 +1016,14 @@ function earnMonth(card, monthSpend, A, pv) {
   CATS.forEach((c) => {
     const amt = monthSpend[c.key] || 0;
     if (amt <= 0) return;
-    if (excl.has(c.key)) { perCat[c.key] = { value: 0, rule: "Excluded by issuer" }; return; }
+    if (isExcluded(c.key)) { perCat[c.key] = { value: 0, rule: "Excluded by issuer" }; return; }
 
-    const active = (card.rules || []).map((r, i) => ({ ...r, _i: i }))
-      .filter((r) => (r.cats.includes("*") || r.cats.includes(c.key)) && (!r.min || qual >= r.min));
+    // Categories flagged `baseOnly` reach the bank through a third-party rail
+    // (CardUp, jomSETTLE), which codes them as ordinary retail. They never
+    // land in a bonus category, so only the card's base rate applies.
+    const rk = ruleKey(c.key);
+    const active = c.baseOnly ? [] : (card.rules || []).map((r, i) => ({ ...r, _i: i }))
+      .filter((r) => (r.cats.includes("*") || r.cats.includes(rk)) && (!r.min || qual >= r.min));
     const wkndRules = active.filter((r) => r.wknd);
     const anyRules = active.filter((r) => !r.wknd);
 
@@ -935,11 +1148,22 @@ function evaluateCard(card, spend, A, P, convOverrides) {
   const convFee = blocksPerYear * (conv.fee || 0);
   const tax = A.serviceTax;
 
+  // Loan instalments only reach a card through a paid rail. Charge that fee on
+  // the categories flagged `rail`, so the ranking shows the true net — which is
+  // negative whenever the rail costs more than the card pays back.
+  let railBase = 0;
+  CATS.forEach((c) => {
+    if (!c.rail) return;
+    const amt = spend[c.key] || 0;
+    railBase += c.annual ? amt : amt * 12;
+  });
+  const railCost = (railBase * (A.loanFeePct || 0)) / 100;
+
   const signupValue = A.includeSignup && annualQual >= (card.signup?.minSpend || 0)
     ? (card.signup?.value || 0) : 0;
 
   const gross = cbYear + ptsValue + loungeValue + insValue;
-  const costs = feeCharged + tax + fxCost + convFee;
+  const costs = feeCharged + tax + fxCost + convFee + railCost;
   const net = gross - costs;
   const netY1 = net + signupValue;
 
@@ -955,6 +1179,13 @@ function evaluateCard(card, spend, A, P, convOverrides) {
   }
 
   const flags = [];
+  if (railCost > 0) {
+    // What the card actually pays back on loan spend, at its base rate.
+    const baseBack = railBase * (card.base.u === "cb" ? card.base.rate / 100 : card.base.rate * pv);
+    flags.push(baseBack >= railCost
+      ? `Loan rail costs ${rm(railCost)} a year and returns ${rm(baseBack)} — worth it on this card`
+      : `Loan rail costs ${rm(railCost)} a year but returns only ${rm(baseBack)} — you lose ${rm(railCost - baseBack)}`);
+  }
   if (P.income < card.income) flags.push(`Income below the RM ${fmt0(card.income)} minimum`);
   if (card.fee > P.maxFee && feeCharged > 0) flags.push("Annual fee above your ceiling");
   if (capLoss > 0) flags.push(`Card cap wastes ${rm(capLoss)} of rebate a year`);
@@ -966,7 +1197,7 @@ function evaluateCard(card, spend, A, P, convOverrides) {
 
   return {
     card, conv, best, routes, pv, net, netY1, gross, cbYear, ptsYear, ptsEarned, ptsValue,
-    milesYear, mpr, loungeValue, insValue, signupValue, feeCharged, tax, fxCost, convFee,
+    milesYear, mpr, loungeValue, insValue, signupValue, feeCharged, tax, fxCost, convFee, railCost, railBase,
     costs, capLoss, blockLoss, blocksPerYear, waiverNote, perCat, years, annualTotal,
     devalRate: dev.annual, devalEvents: dev.events, annualQual, loungeUsed, flags,
     eligible: P.income >= card.income,
@@ -1004,7 +1235,7 @@ function allocatePerks(cards, A, P, partner) {
       out.partnerCard = withLounge[1];
       out.partnerVisits += Math.min(short, out.partnerCard.lounge.v);
       if (out.partnerCard.bank === "UOB" && out.yourCard.bank === "UOB") {
-        out.warning = "Both lounge cards are UOB. From 1 September 2026 UOB admits only one of its cards per lounge visit, so your partner cannot enter on the second UOB card.";
+        out.warning = "Both lounge cards are UOB. UOB's terms limit its lounge benefit to one admission per cardmember per day, and the September 2026 refresh could not confirm on a UOB page whether a second UOB card admits a second person — check before relying on it.";
       }
     }
   }
@@ -1340,10 +1571,11 @@ function CreditCardDashboard() {
           <div className="mt-4 rounded-md border border-stone-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
             <div className="text-[11px] font-medium text-stone-700 dark:text-zinc-300">Data provenance</div>
             <p className="mt-1 text-[11px] leading-relaxed text-stone-500 dark:text-zinc-500">
-              Card terms last reviewed {DATA_REVIEWED}. Conversion tables for Maybank, CIMB and UOB
-              come from published issuer schedules and carry a green badge; {unsourcedCount} programmes
-              are unsourced and carry an amber badge — edit those in the Valuation tab before you
-              rely on them.
+              Card terms last reviewed {DATA_REVIEWED}. Conversion tables for CIMB, UOB PRVI, RHB and
+              direct-Enrich cards were read off the issuer's own page and carry a green badge;
+              {" "}{unsourcedCount} programmes are unsourced and carry an amber badge — among them
+              Maybank and UOB's metal tier, whose rewards catalogues could not be reached during this
+              refresh. Edit those in the Valuation tab before you rely on them.
             </p>
           </div>
         </nav>
@@ -1378,6 +1610,9 @@ function CreditCardDashboard() {
                           </button>
                         ))}
                       </div>
+                      {c.help && (
+                        <p className="mt-2 text-[11px] leading-relaxed text-stone-500 dark:text-zinc-500">{c.help}</p>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1542,6 +1777,9 @@ function CreditCardDashboard() {
                                   <tr><td className="py-1 text-rose-700 dark:text-rose-400">Service tax</td><td className="py-1 text-right tabular-nums text-rose-700 dark:text-rose-400">−{fmt(e.tax)}</td></tr>
                                   <tr><td className="py-1 text-rose-700 dark:text-rose-400">FX markup ({fmt(e.card.fx)}%)</td><td className="py-1 text-right tabular-nums text-rose-700 dark:text-rose-400">−{fmt(e.fxCost)}</td></tr>
                                   <tr><td className="py-1 text-rose-700 dark:text-rose-400">Transfer fees ({e.blocksPerYear} transfers)</td><td className="py-1 text-right tabular-nums text-rose-700 dark:text-rose-400">−{fmt(e.convFee)}</td></tr>
+                                  {e.railCost > 0 && (
+                                    <tr><td className="py-1 text-rose-700 dark:text-rose-400">Loan rail fee ({fmt(assum.loanFeePct)}% of {rm(e.railBase)})</td><td className="py-1 text-right tabular-nums text-rose-700 dark:text-rose-400">−{fmt(e.railCost)}</td></tr>
+                                  )}
                                   <tr className="border-t-2 border-stone-300 font-semibold dark:border-zinc-700">
                                     <td className="py-1.5">Steady-state net</td><td className="py-1.5 text-right tabular-nums">{rm(e.net)}</td>
                                   </tr>
@@ -2171,8 +2409,14 @@ function CreditCardDashboard() {
                     <NumInput prefix="" value={assum.wkndShare} step={0.05}
                       onChange={(v) => setAssum((a) => ({ ...a, wkndShare: Math.min(1, v) }))} />
                   </Field>
+                  <Field label="Loan rail fee" hint="% charged by CardUp or jomSETTLE">
+                    <NumInput prefix="" value={assum.loanFeePct} step={0.1}
+                      onChange={(v) => setAssum((a) => ({ ...a, loanFeePct: Math.max(0, v) }))} />
+                  </Field>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
+                  <Toggle on={assum.bnplEarns} onChange={(v) => setAssum((a) => ({ ...a, bnplEarns: v }))}
+                    label={assum.bnplEarns ? "BNPL repayment earns like online retail" : "BNPL repayment earns nothing"} />
                   <Toggle on={assum.applyBlock} onChange={(v) => setAssum((a) => ({ ...a, applyBlock: v }))}
                     label={assum.applyBlock ? "Stranded points penalised" : "Stranded points ignored"} />
                   <Toggle on={assum.applyDeval} onChange={(v) => setAssum((a) => ({ ...a, applyDeval: v }))}
