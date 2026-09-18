@@ -1,0 +1,987 @@
+<title>Bursa Yield-on-Cost Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+  /* ---------------------------------------------------------------------
+     TOKENS — full light palette on bare :root, redefined for dark twice
+     (OS preference + explicit theme stamp) so both directions win.
+     Neutrals are biased slightly teal so they read as chosen, not default.
+     --------------------------------------------------------------------- */
+  :root {
+    --bg:          #f3f6f5;
+    --surface:     #ffffff;
+    --surface-2:   #e9eeed;
+    --surface-3:   #dfe6e4;
+    --ink:         #101f1d;
+    --ink-2:       #4b5c59;
+    --ink-3:       #7c8d8a;
+    --line:        #dbe3e1;
+    --line-strong: #c3cfcc;
+    --accent:      #0b6b5e;
+    --accent-ink:  #ffffff;
+    --accent-soft: #dfefec;
+    --good:        #1a7f4b;
+    --good-soft:   #dcf0e5;
+    --warn:        #9a6100;
+    --warn-soft:   #f7ecd6;
+    --bad:         #ab3a3a;
+    --bad-soft:    #f6e2e2;
+    --s1:          #2a78d6;   /* categorical slot 1 — the simulated path  */
+    --s1-fill:     rgba(42,120,214,0.16);
+    --s2:          #eb6834;   /* categorical slot 2 — the target line     */
+    --shadow:      0 1px 2px rgba(16,31,29,0.06), 0 8px 24px rgba(16,31,29,0.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:          #0e1413;
+      --surface:     #151d1c;
+      --surface-2:   #1c2625;
+      --surface-3:   #24302e;
+      --ink:         #eef3f2;
+      --ink-2:       #a8b7b5;
+      --ink-3:       #758583;
+      --line:        #283432;
+      --line-strong: #37453f;
+      --accent:      #4fc0ab;
+      --accent-ink:  #06231f;
+      --accent-soft: #14302c;
+      --good:        #46b880;
+      --good-soft:   #123526;
+      --warn:        #d9a441;
+      --warn-soft:   #33280f;
+      --bad:         #e28282;
+      --bad-soft:    #3a1f1f;
+      --s1:          #3987e5;
+      --s1-fill:     rgba(57,135,229,0.22);
+      --s2:          #d95926;
+      --shadow:      0 1px 2px rgba(0,0,0,0.4), 0 8px 24px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:          #0e1413;
+    --surface:     #151d1c;
+    --surface-2:   #1c2625;
+    --surface-3:   #24302e;
+    --ink:         #eef3f2;
+    --ink-2:       #a8b7b5;
+    --ink-3:       #758583;
+    --line:        #283432;
+    --line-strong: #37453f;
+    --accent:      #4fc0ab;
+    --accent-ink:  #06231f;
+    --accent-soft: #14302c;
+    --good:        #46b880;
+    --good-soft:   #123526;
+    --warn:        #d9a441;
+    --warn-soft:   #33280f;
+    --bad:         #e28282;
+    --bad-soft:    #3a1f1f;
+    --s1:          #3987e5;
+    --s1-fill:     rgba(57,135,229,0.22);
+    --s2:          #d95926;
+    --shadow:      0 1px 2px rgba(0,0,0,0.4), 0 8px 24px rgba(0,0,0,0.35);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Public Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1280px; margin: 0 auto; padding-inline: 16px; padding-block: 0 56px; }
+  .num { font-family: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace; font-variant-numeric: tabular-nums; }
+
+  /* ----------------------------- masthead ----------------------------- */
+  header.masthead {
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+    margin-bottom: 28px;
+  }
+  .masthead-inner {
+    max-width: 1280px; margin: 0 auto; padding-inline: 16px;
+    padding-block: 22px 20px;
+    display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; justify-content: space-between;
+  }
+  .eyebrow {
+    font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--accent); font-weight: 600; margin-bottom: 6px;
+  }
+  h1 {
+    font-family: "Newsreader", Georgia, serif;
+    font-weight: 600; font-size: clamp(26px, 4.4vw, 40px); line-height: 1.08;
+    margin: 0; text-wrap: balance; letter-spacing: -0.015em;
+  }
+  .dek { color: var(--ink-2); margin: 8px 0 0; max-width: 62ch; }
+  .theme-btn {
+    border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--ink-2);
+    border-radius: 999px; padding: 7px 14px; font: inherit; font-size: 12px; cursor: pointer;
+  }
+  .theme-btn:hover { background: var(--surface-3); color: var(--ink); }
+
+  /* ------------------------------ panels ------------------------------ */
+  section { margin-bottom: 28px; }
+  .panel {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 10px; padding: 20px;
+  }
+  h2 {
+    font-family: "Newsreader", Georgia, serif; font-weight: 600;
+    font-size: 22px; margin: 0 0 4px; letter-spacing: -0.01em;
+  }
+  h3 { font-size: 13px; margin: 0 0 10px; font-weight: 600; letter-spacing: 0.02em; }
+  .sub { color: var(--ink-2); font-size: 13px; margin: 0 0 18px; max-width: 72ch; }
+  .label {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--ink-3); font-weight: 600;
+  }
+
+  /* --------------------- concept: the worked example ------------------- */
+  .concept { display: grid; grid-template-columns: minmax(0,1.05fr) minmax(0,1fr); gap: 28px; }
+  /* grid items default to min-width:auto, which lets the nowrap formula and the
+     example table stretch the track past the phone viewport — pin them to 0. */
+  .concept > div { min-width: 0; }
+  .rule-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 14px; }
+  .rule-list li { display: grid; grid-template-columns: 22px 1fr; gap: 12px; align-items: start; }
+  .rule-n {
+    font-family: "IBM Plex Mono", monospace; font-size: 11px; font-weight: 600;
+    color: var(--accent); border: 1px solid var(--accent); border-radius: 4px;
+    width: 22px; height: 22px; display: grid; place-items: center; margin-top: 1px;
+  }
+  .rule-list b { font-weight: 600; }
+  .rule-list p { margin: 2px 0 0; color: var(--ink-2); font-size: 13px; }
+  .formula {
+    background: var(--surface-2); border-left: 3px solid var(--accent);
+    padding: 12px 14px; border-radius: 0 6px 6px 0; margin-top: 18px;
+    font-family: "IBM Plex Mono", monospace; font-size: 12.5px; color: var(--ink);
+    overflow-x: auto; white-space: nowrap;
+  }
+  table.example { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.example th {
+    text-align: right; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ink-3); font-weight: 600; padding: 0 0 8px; border-bottom: 1px solid var(--line);
+  }
+  table.example th:first-child, table.example td:first-child { text-align: left; }
+  table.example td { text-align: right; padding: 7px 0; border-bottom: 1px solid var(--line); }
+  table.example tr:last-child td { border-bottom: none; font-weight: 600; }
+  .example-wrap { overflow-x: auto; }
+
+  /* ----------------------------- controls ----------------------------- */
+  .controls { display: grid; gap: 18px; }
+  .ctl-row { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: flex-end; }
+  .ctl { display: grid; gap: 7px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--ink-2);
+    border-radius: 7px; padding: 7px 13px; font: inherit; font-size: 12.5px; font-weight: 500;
+    cursor: pointer; font-variant-numeric: tabular-nums;
+  }
+  .chip:hover { background: var(--surface-3); color: var(--ink); }
+  .chip[aria-pressed="true"] {
+    background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600;
+  }
+  .chip:focus-visible, .theme-btn:focus-visible, select:focus-visible, input:focus-visible,
+  tr.row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  input[type="number"], input[type="search"], select {
+    font: inherit; font-size: 13px; color: var(--ink); background: var(--surface-2);
+    border: 1px solid var(--line-strong); border-radius: 7px; padding: 7px 10px;
+  }
+  input[type="number"] { width: 96px; font-family: "IBM Plex Mono", monospace; }
+  input[type="search"] { width: 210px; }
+  .switch { display: inline-flex; align-items: center; gap: 9px; cursor: pointer; font-size: 13px; }
+  .switch input { accent-color: var(--accent); width: 16px; height: 16px; }
+
+  /* ---------------------------- stat tiles ---------------------------- */
+  .tiles { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; }
+  .tile { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 15px 16px; }
+  .tile .v {
+    font-family: "IBM Plex Mono", monospace; font-size: 27px; font-weight: 500;
+    letter-spacing: -0.02em; margin-top: 6px; color: var(--ink);
+  }
+  .tile .v small { font-size: 14px; color: var(--ink-3); font-weight: 400; }
+  .tile .note { font-size: 11.5px; color: var(--ink-3); margin-top: 3px; }
+
+  /* ------------------------------- chart ------------------------------ */
+  .chart-head { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: baseline; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--ink-2); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .swatch { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+  .swatch.band { height: 10px; width: 14px; background: var(--s1-fill); border-radius: 2px; }
+  figure.chart { margin: 0; }
+  figure.chart svg { display: block; width: 100%; height: auto; }
+  figcaption { font-size: 12px; color: var(--ink-3); margin-top: 10px; }
+
+  /* ------------------------------- table ------------------------------ */
+  .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+  table.grid { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1060px; }
+  table.grid thead th {
+    position: sticky; top: 0; z-index: 2; background: var(--surface-2);
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-3);
+    font-weight: 600; text-align: right; padding: 11px 12px; white-space: nowrap;
+    border-bottom: 1px solid var(--line-strong); cursor: pointer; user-select: none;
+  }
+  table.grid thead th:hover { color: var(--ink); }
+  table.grid thead th[aria-sort] { color: var(--accent); }
+  table.grid thead th.l, table.grid tbody td.l { text-align: left; }
+  table.grid tbody td { padding: 10px 12px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  table.grid tbody tr:last-child td { border-bottom: none; }
+  table.grid tbody tr.row { cursor: pointer; }
+  table.grid tbody tr.row:hover td { background: var(--surface-2); }
+  table.grid tbody tr.row.sel td { background: var(--accent-soft); }
+  .code { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--ink-3); }
+  .name { font-weight: 500; }
+  .sector { font-size: 11.5px; color: var(--ink-3); }
+  .pill {
+    display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11.5px;
+    font-weight: 600; font-variant-numeric: tabular-nums;
+  }
+  .pill.good { background: var(--good-soft); color: var(--good); }
+  .pill.warn { background: var(--warn-soft); color: var(--warn); }
+  .pill.bad  { background: var(--bad-soft);  color: var(--bad); }
+  .never { color: var(--ink-3); }
+  .empty { padding: 40px 16px; text-align: center; color: var(--ink-3); }
+
+  /* ----------------------------- footnotes ---------------------------- */
+  .notes { font-size: 12.5px; color: var(--ink-2); }
+  .notes p { margin: 0 0 10px; max-width: 78ch; }
+  .notes strong { color: var(--ink); font-weight: 600; }
+  .caveat {
+    border: 1px solid var(--warn); background: var(--warn-soft); color: var(--ink);
+    border-radius: 8px; padding: 13px 15px; font-size: 12.5px; margin-bottom: 18px;
+  }
+  .caveat b { color: var(--warn); }
+
+  @media (max-width: 860px) {
+    .concept { grid-template-columns: 1fr; gap: 22px; }
+    .tiles { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <div>
+      <div class="eyebrow">Bursa Malaysia · dividend compounding study</div>
+      <h1>Yield on Cost Lab</h1>
+      <p class="dek">What your dividend cheque is worth against the price <em>you</em> paid — simulated
+        forward for 100 Bursa large caps, with the target you set.</p>
+    </div>
+    <button class="theme-btn" id="themeBtn" type="button">Dark mode</button>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ===================== 1. THE CONCEPT ===================== -->
+  <section>
+    <div class="panel concept">
+      <div>
+        <h2>Your instinct is right — with one condition</h2>
+        <p class="sub">Yield on cost (YoC) divides today's dividend by the price you originally paid.
+          It rises on its own, and the capital gain arrives alongside it, for one reason only.</p>
+        <ul class="rule-list">
+          <li><span class="rule-n">1</span><div><b>YoC climbs only as fast as the dividend per share climbs.</b>
+            <p>A rising share price does nothing to your yield on cost — your cost never changes. If DPS is
+              flat, your YoC is flat forever, no matter what the chart does.</p></div></li>
+          <li><span class="rule-n">2</span><div><b>The capital gain is the same engine, seen from the other end.</b>
+            <p>The market prices an income stream to a yield it finds acceptable. If it keeps demanding
+              4.00% and the dividend doubles, the price must double. Dividend growth <em>is</em> the capital gain.</p></div></li>
+          <li><span class="rule-n">3</span><div><b>100% YoC is arithmetic, not magic — and it is slow.</b>
+            <p>Getting from a 4.00% entry yield to 100% means the dividend must grow 25-fold. At 7.00% DPS
+              growth that is <b>47.6 years</b>. At Bursa's more typical 3.00%, it is 109 years.</p></div></li>
+          <li><span class="rule-n">4</span><div><b>Reinvesting changes the maths entirely.</b>
+            <p>Ploughing the dividends back buys more shares, so your income grows at roughly
+              <i>DPS growth + current yield</i>. That 47.6-year wait drops to about 26 years. Toggle DRIP below.</p></div></li>
+        </ul>
+        <div class="formula">YoC(t) = DPS&#8320; × (1 + g)^t ÷ Price&#8320;&nbsp;&nbsp;→&nbsp;&nbsp;years to target = ln(target ÷ entry yield) ÷ ln(1 + g)</div>
+      </div>
+
+      <div>
+        <h3>Worked example — RM10.00 a share, 40.00 sen dividend, 7.00% DPS growth</h3>
+        <div class="example-wrap">
+          <table class="example" id="exampleTable">
+            <thead><tr><th>Year</th><th>DPS (RM)</th><th>Yield on cost</th><th>Share price (RM)</th><th>Dividends banked (RM)</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="sub" style="margin:14px 0 0">Price assumes the market keeps paying for a 4.00% yield, so it tracks
+          the dividend. By year 30 you hold a RM76.12 share bought for RM10.00, have banked RM37.78 of
+          dividends per share, and each year's cheque alone is <b>30.45%</b> of what you paid. 100% arrives
+          in year 48 — real, but it needs a lifetime and an uninterrupted payout.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 2. CONTROLS ===================== -->
+  <section>
+    <div class="panel controls">
+      <div>
+        <h2>Set your target and run the book</h2>
+        <p class="sub" style="margin-bottom:0">100 Bursa Malaysia large caps, each simulated 300 times over 40 years.
+          Every figure below is the median across those runs, so a dividend cut somewhere in the path is priced in.</p>
+      </div>
+
+      <div class="ctl-row">
+        <div class="ctl">
+          <span class="label">Target yield on cost</span>
+          <div class="chips" id="targetChips" role="group" aria-label="Target yield on cost"></div>
+        </div>
+        <div class="ctl">
+          <span class="label">Custom target %</span>
+          <input type="number" id="targetCustom" min="1" max="500" step="0.5" value="10" aria-label="Custom target yield on cost, percent">
+        </div>
+      </div>
+
+      <div class="ctl-row">
+        <div class="ctl">
+          <span class="label">Holding period</span>
+          <div class="chips" id="horizonChips" role="group" aria-label="Holding period"></div>
+        </div>
+        <div class="ctl">
+          <span class="label">Dividends</span>
+          <label class="switch" for="dripBox">
+            <input type="checkbox" id="dripBox">
+            <span>Reinvest into more shares (DRIP)</span>
+          </label>
+        </div>
+        <div class="ctl">
+          <span class="label">Sector</span>
+          <select id="sectorSel" aria-label="Filter by sector"></select>
+        </div>
+        <div class="ctl">
+          <span class="label">Search</span>
+          <input type="search" id="searchBox" placeholder="Name or stock code" aria-label="Search by name or stock code">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 3. HEADLINE TILES ===================== -->
+  <section>
+    <div class="tiles">
+      <div class="tile"><span class="label">Reach the target in time</span>
+        <div class="v" id="tileCount">—</div><div class="note" id="tileCountNote">of 100 stocks</div></div>
+      <div class="tile"><span class="label">Fastest to target</span>
+        <div class="v" id="tileFast">—</div><div class="note" id="tileFastNote">&nbsp;</div></div>
+      <div class="tile"><span class="label">Median yield on cost</span>
+        <div class="v" id="tileYoc">—</div><div class="note" id="tileYocNote">&nbsp;</div></div>
+      <div class="tile"><span class="label">Median dividends banked</span>
+        <div class="v" id="tileDiv">—</div><div class="note" id="tileDivNote">&nbsp;</div></div>
+    </div>
+  </section>
+
+  <!-- ===================== 4. CHART ===================== -->
+  <section>
+    <div class="panel">
+      <div class="chart-head">
+        <div>
+          <h2 id="chartTitle">—</h2>
+          <p class="sub" id="chartSub" style="margin-bottom:12px">&nbsp;</p>
+        </div>
+        <div class="legend">
+          <span><i class="swatch" style="background:var(--s1)"></i> Median yield on cost</span>
+          <span><i class="swatch band"></i> 10th–90th percentile of runs</span>
+          <span><i class="swatch" style="background:var(--s2)"></i> Your target</span>
+        </div>
+      </div>
+      <figure class="chart"><div id="chartHost"></div>
+        <figcaption id="chartCap">Click any row in the table to plot it here.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ===================== 5. THE DASHBOARD TABLE ===================== -->
+  <section>
+    <h2 style="margin-bottom:10px">The book <span class="num" id="rowCount" style="color:var(--ink-3);font-size:15px"></span></h2>
+    <div class="table-scroll">
+      <table class="grid" id="grid">
+        <thead>
+          <tr>
+            <th class="l" data-k="rank">#</th>
+            <th class="l" data-k="name">Company</th>
+            <th class="l" data-k="sector">Sector</th>
+            <th data-k="y0">Entry yield</th>
+            <th data-k="g">DPS CAGR</th>
+            <th data-k="years">Years to target</th>
+            <th data-k="prob">Chance of getting there</th>
+            <th data-k="yoc">YoC at horizon</th>
+            <th data-k="divpct">Dividends banked</th>
+            <th data-k="pxmult">Capital multiple</th>
+            <th data-k="cagr">Total return CAGR</th>
+          </tr>
+        </thead>
+        <tbody id="gridBody"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="emptyMsg" hidden>No stock matches these filters.</div>
+  </section>
+
+  <!-- ===================== 6. METHOD & CAVEATS ===================== -->
+  <section>
+    <div class="panel notes">
+      <h2 style="margin-bottom:12px">How to read this, and what it is not</h2>
+      <div class="caveat"><b>Data provenance.</b> This machine had no network access to Bursa Malaysia,
+        Yahoo Finance or any price vendor, so it is <b>not</b> built on downloaded price and dividend files.
+        Each stock carries a hand-set long-run dividend profile — entry yield, DPS growth rate, growth
+        volatility, and the annual odds and depth of a cut — calibrated to how that company and its sector
+        have historically paid. Treat the ranking as a structural map of Bursa's dividend landscape, not as
+        an audited backtest, and re-run it against real DPS histories before putting money behind it.</div>
+      <p><strong>Years to target</strong> is the median year in which the annual dividend, measured against
+        your original cost, first equals or exceeds your target. <span class="never">"Never"</span> means
+        more than half the runs never got there inside 40 years.</p>
+      <p><strong>Chance of getting there</strong> is the share of the 300 runs that reached the target within
+        your holding period. A high yielder with a fragile payout can rank fast on the median and still show
+        a poor chance — that gap is the whole point of the column.</p>
+      <p><strong>Capital multiple</strong> is the share price at your horizon divided by your entry price. It is
+        driven by dividend growth: the simulated market yield mean-reverts to each stock's long-run norm, so a
+        dividend that doubles drags the price with it. That is the mechanism behind your question — the same
+        growth pays you twice.</p>
+      <p><strong>DRIP</strong> reinvests each dividend into more shares at that year's price, so income on your
+        original capital compounds at roughly dividend growth plus current yield. It is the only realistic route
+        to a 100% yield on cost inside one investing lifetime on this market.</p>
+      <p style="color:var(--ink-3)">Simulation seeded per stock, so the same settings always produce the same
+        numbers. Not investment advice.</p>
+    </div>
+  </section>
+</div>
+
+<script>
+/* =====================================================================
+   BURSA YIELD-ON-COST LAB
+   ---------------------------------------------------------------------
+   Everything is computed in-page. No network calls, no external data.
+
+   Each stock carries a long-run dividend profile:
+     y0   entry dividend yield today, %              (dividend ÷ price you pay)
+     g    long-run DPS growth rate, % per year
+     sd   volatility of that growth, percentage points
+     cut  annual probability of a dividend cut
+     dep  average depth of a cut (fraction of DPS lost)
+     anc  long-run "normal" market yield the price re-rates towards, %
+   ===================================================================== */
+
+/* --- number formatting: thousand separators, always 2 decimals --------- */
+const NF2 = new Intl.NumberFormat("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmt = (v) => NF2.format(v);
+const pct = (v) => NF2.format(v) + "%";
+
+/* --- the universe: 100 Bursa Malaysia large caps ---------------------- */
+/* [code, name, sector, y0, g, sd, cut, dep, anc] */
+const STOCKS = [
+  ["1155","Malayan Banking","Banks",5.90,4.00,6,0.04,0.30,6.00],
+  ["1295","Public Bank","Banks",4.80,4.50,5,0.03,0.25,4.60],
+  ["1023","CIMB Group","Banks",5.40,6.00,9,0.07,0.40,5.20],
+  ["5819","Hong Leong Bank","Banks",3.60,6.50,6,0.03,0.25,3.60],
+  ["1066","RHB Bank","Banks",6.20,4.50,8,0.06,0.35,6.00],
+  ["1015","AMMB Holdings","Banks",4.40,6.00,12,0.08,0.45,4.50],
+  ["2488","Alliance Bank","Banks",5.60,4.00,9,0.07,0.35,5.50],
+  ["5185","Affin Bank","Banks",2.90,5.00,14,0.10,0.45,3.20],
+  ["5258","Bank Islam","Banks",5.10,3.50,10,0.08,0.40,5.20],
+  ["1082","Hong Leong Financial","Banks",3.10,6.50,7,0.04,0.25,3.20],
+  ["1171","MBSB","Banks",4.30,3.00,15,0.12,0.50,4.60],
+  ["1818","Bursa Malaysia","Financial services",4.20,3.50,14,0.10,0.35,4.20],
+  ["8621","LPI Capital","Financial services",5.20,3.00,8,0.05,0.30,5.00],
+  ["1163","Allianz Malaysia","Financial services",4.50,8.00,10,0.05,0.30,4.40],
+  ["6139","Syarikat Takaful","Financial services",4.60,5.00,12,0.07,0.35,4.60],
+  ["5139","Aeon Credit Service","Financial services",5.30,6.00,10,0.06,0.30,5.20],
+  ["9296","RCE Capital","Financial services",6.00,4.00,12,0.08,0.35,5.80],
+  ["5347","Tenaga Nasional","Utilities",3.40,4.00,10,0.06,0.30,3.60],
+  ["6742","YTL Power International","Utilities",2.60,6.00,22,0.15,0.50,3.20],
+  ["6033","Petronas Gas","Utilities",5.00,2.50,7,0.05,0.25,4.80],
+  ["5209","Gas Malaysia","Utilities",5.80,2.50,9,0.06,0.30,5.60],
+  ["5264","Malakoff Corporation","Utilities",5.50,1.50,20,0.15,0.50,5.60],
+  ["4677","YTL Corporation","Utilities",1.60,6.00,20,0.14,0.45,2.20],
+  ["6012","Maxis","Telco & media",4.30,1.50,8,0.07,0.30,4.20],
+  ["6947","CelcomDigi","Telco & media",4.60,2.50,10,0.08,0.35,4.50],
+  ["4863","Telekom Malaysia","Telco & media",3.80,5.00,12,0.08,0.35,3.80],
+  ["5031","TIME dotCom","Telco & media",4.00,6.00,12,0.07,0.30,4.00],
+  ["6888","Axiata Group","Telco & media",2.20,4.00,25,0.20,0.55,3.00],
+  ["6399","Astro Malaysia","Telco & media",6.00,-1.00,25,0.25,0.55,7.00],
+  ["4707","Nestle (Malaysia)","Consumer",3.30,5.00,7,0.04,0.20,3.20],
+  ["3689","Fraser & Neave","Consumer",2.90,6.00,9,0.05,0.25,3.00],
+  ["7084","QL Resources","Consumer",0.90,9.00,8,0.04,0.20,1.00],
+  ["2836","Carlsberg Brewery","Consumer",5.20,4.00,12,0.08,0.35,5.00],
+  ["3255","Heineken Malaysia","Consumer",5.40,3.50,12,0.08,0.35,5.20],
+  ["4065","PPB Group","Consumer",2.40,4.50,12,0.07,0.30,2.50],
+  ["3026","Dutch Lady Milk","Consumer",3.00,1.00,18,0.15,0.45,3.50],
+  ["7052","Padini Holdings","Consumer",4.40,3.00,16,0.12,0.40,4.40],
+  ["6599","Aeon Co (M)","Consumer",3.20,4.50,14,0.10,0.35,3.40],
+  ["5326","99 Speed Mart Retail","Consumer",1.80,10.00,9,0.05,0.25,1.90],
+  ["5296","Mr DIY Group","Consumer",2.80,8.00,10,0.06,0.25,2.80],
+  ["5306","Farm Fresh","Consumer",1.00,12.00,12,0.08,0.30,1.20],
+  ["4162","British American Tobacco (M)","Consumer",8.20,-2.00,18,0.18,0.45,8.50],
+  ["5285","SD Guthrie","Plantation",3.60,2.00,25,0.18,0.50,3.80],
+  ["1961","IOI Corporation","Plantation",3.40,2.50,22,0.15,0.45,3.50],
+  ["2445","Kuala Lumpur Kepong","Plantation",2.90,2.00,24,0.18,0.50,3.20],
+  ["2291","Genting Plantations","Plantation",2.70,2.50,26,0.18,0.50,3.00],
+  ["2089","United Plantations","Plantation",5.40,3.50,20,0.12,0.40,5.00],
+  ["5138","Hap Seng Plantations","Plantation",5.00,1.50,28,0.20,0.50,5.20],
+  ["5222","FGV Holdings","Plantation",3.00,0.50,35,0.28,0.60,4.00],
+  ["5126","Sarawak Oil Palms","Plantation",3.20,3.00,26,0.18,0.50,3.40],
+  ["5227","IGB REIT","REIT",5.30,3.00,8,0.06,0.30,5.20],
+  ["5176","Sunway REIT","REIT",5.60,2.50,10,0.08,0.35,5.50],
+  ["5235","KLCCP Stapled Group","REIT",4.90,2.50,7,0.05,0.25,4.80],
+  ["5212","Pavilion REIT","REIT",5.80,2.00,10,0.08,0.35,5.70],
+  ["5106","Axis REIT","REIT",5.40,2.00,8,0.06,0.30,5.30],
+  ["5109","YTL Hospitality REIT","REIT",6.40,1.00,20,0.18,0.50,6.50],
+  ["5211","Sunway Group","Property & construction",1.80,7.00,14,0.08,0.30,2.00],
+  ["8664","SP Setia","Property & construction",2.40,3.00,25,0.20,0.50,3.00],
+  ["5249","IOI Properties","Property & construction",1.60,5.00,22,0.15,0.45,2.00],
+  ["5200","UOA Development","Property & construction",7.20,0.50,18,0.15,0.45,7.00],
+  ["8583","Mah Sing Group","Property & construction",3.40,3.00,22,0.18,0.45,3.60],
+  ["8206","Eco World Development","Property & construction",3.60,5.00,20,0.15,0.40,3.60],
+  ["5236","Matrix Concepts","Property & construction",6.40,2.00,16,0.12,0.40,6.20],
+  ["5398","Gamuda","Property & construction",1.40,7.00,18,0.12,0.35,1.80],
+  ["3336","IJM Corporation","Property & construction",2.60,4.00,20,0.15,0.40,2.80],
+  ["5263","Sunway Construction","Property & construction",1.90,8.00,16,0.10,0.35,2.00],
+  ["5288","Sime Darby Property","Property & construction",2.60,5.00,20,0.15,0.40,2.80],
+  ["5225","IHH Healthcare","Healthcare",1.30,8.00,12,0.07,0.30,1.50],
+  ["5878","KPJ Healthcare","Healthcare",1.90,9.00,12,0.07,0.30,2.00],
+  ["7081","Pharmaniaga","Healthcare",1.50,0.00,35,0.30,0.60,3.00],
+  ["5168","Hartalega Holdings","Healthcare",1.60,2.00,40,0.30,0.60,2.50],
+  ["7113","Top Glove","Healthcare",0.80,1.00,45,0.35,0.65,2.00],
+  ["7153","Kossan Rubber","Healthcare",2.60,2.00,35,0.28,0.55,3.00],
+  ["5183","Petronas Chemicals","Energy & chemicals",2.80,1.50,30,0.22,0.55,3.40],
+  ["5681","Petronas Dagangan","Energy & chemicals",4.60,2.00,18,0.12,0.40,4.50],
+  ["7277","Dialog Group","Energy & chemicals",1.80,5.00,14,0.10,0.30,2.00],
+  ["7293","Yinson Holdings","Energy & chemicals",1.20,6.00,25,0.18,0.45,1.60],
+  ["5210","Bumi Armada","Energy & chemicals",1.00,4.00,35,0.30,0.60,2.00],
+  ["5199","Hibiscus Petroleum","Energy & chemicals",5.00,2.00,40,0.30,0.60,5.00],
+  ["3816","MISC","Transport & logistics",4.80,2.50,12,0.08,0.30,4.70],
+  ["5246","Westports Holdings","Transport & logistics",4.40,4.00,10,0.06,0.25,4.30],
+  ["5014","Malaysia Airports","Transport & logistics",1.80,5.00,30,0.25,0.55,2.40],
+  ["0166","Inari Amertron","Technology",3.20,6.00,22,0.15,0.40,3.20],
+  ["0097","ViTrox Corporation","Technology",0.80,10.00,20,0.12,0.35,0.90],
+  ["0128","Frontken Corporation","Technology",1.40,9.00,16,0.10,0.30,1.50],
+  ["5005","Unisem (M)","Technology",3.00,4.00,25,0.18,0.45,3.20],
+  ["3867","Malaysian Pacific Industries","Technology",2.40,5.00,22,0.15,0.40,2.50],
+  ["0208","Greatech Technology","Technology",0.50,12.00,25,0.15,0.40,0.80],
+  ["7160","Pentamaster Corporation","Technology",0.90,10.00,22,0.14,0.38,1.00],
+  ["0151","Kelington Group","Technology",2.20,10.00,20,0.12,0.35,2.20],
+  ["0138","MyEG Services","Technology",3.00,8.00,20,0.14,0.40,3.00],
+  ["3182","Genting Berhad","Gaming & leisure",3.40,3.00,25,0.20,0.50,3.60],
+  ["4715","Genting Malaysia","Gaming & leisure",5.20,2.00,28,0.22,0.55,5.20],
+  ["4197","Sime Darby","Industrials",5.00,3.00,18,0.12,0.35,4.90],
+  ["1619","DRB-Hicom","Industrials",1.20,4.00,30,0.25,0.55,2.00],
+  ["5248","Bermaz Auto","Industrials",7.80,0.00,30,0.25,0.55,7.50],
+  ["3301","Hong Leong Industries","Industrials",5.80,3.00,14,0.10,0.35,5.60],
+  ["3794","Malayan Cement","Industrials",1.60,6.00,25,0.18,0.45,2.00],
+  ["8869","Press Metal Aluminium","Industrials",1.50,7.00,20,0.12,0.35,1.60],
+  ["4731","Scientex","Industrials",3.00,6.00,10,0.06,0.25,3.00]
+];
+
+/* --------------------------- simulation ------------------------------- */
+const PATHS = 300;     // Monte Carlo runs per stock
+const MAXT  = 40;      // longest horizon, in years
+const NS    = STOCKS.length;
+const STRIDE = MAXT + 1;
+
+/* Seeded PRNG so the same settings always yield the same table. */
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+/* Box-Muller standard normal from a uniform generator. */
+function normal(rnd) {
+  let u = 0, v = 0;
+  while (u === 0) u = rnd();
+  while (v === 0) v = rnd();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+
+/* Flat Float32 stores: [stock][path][year] */
+const N = NS * PATHS * STRIDE;
+const yocArr = new Float32Array(N);   // annual dividend income ÷ original cost, %
+const divArr = new Float32Array(N);   // cumulative dividends received, % of cost
+const valArr = new Float32Array(N);   // portfolio value ÷ original cost (capital only)
+const pxArr  = new Float32Array(N);   // share price ÷ entry price
+
+function runSimulation(drip) {
+  for (let s = 0; s < NS; s++) {
+    const [, , , y0, g, sd, cut, dep, anc] = STOCKS[s];
+    const y0f = y0 / 100, gf = g / 100, sdf = sd / 100, ancf = anc / 100;
+    for (let p = 0; p < PATHS; p++) {
+      const rnd = mulberry32((s * 7919 + p * 104729 + 12345) >>> 0);
+      let dps = y0f;        // dividend per share, priced against an entry price of 1.00
+      let mktY = y0f;       // the yield the market currently demands
+      let shares = 1;       // units held per 1.00 of capital invested
+      let cumDiv = 0;
+      const base = (s * PATHS + p) * STRIDE;
+      yocArr[base] = y0f * 100;
+      divArr[base] = 0;
+      valArr[base] = 1;
+      pxArr[base]  = 1;
+
+      for (let t = 1; t <= MAXT; t++) {
+        /* 1. the dividend moves: either a cut, or noisy growth */
+        if (rnd() < cut) {
+          dps *= 1 - dep * (0.55 + 0.9 * rnd());
+        } else {
+          dps *= Math.max(0.25, 1 + gf + sdf * normal(rnd));
+        }
+        if (dps < 1e-6) dps = 1e-6;
+
+        /* 2. the market yield mean-reverts to the stock's long-run norm */
+        mktY += 0.22 * (ancf - mktY) + 0.16 * mktY * normal(rnd);
+        mktY = Math.min(Math.max(mktY, 0.35 * ancf), 2.60 * ancf);
+
+        /* 3. price falls out of the two above — this is why dividend growth
+              and capital gain are the same engine */
+        const price = dps / mktY;
+
+        /* 4. collect the cash, and reinvest it if DRIP is on */
+        const cash = shares * dps;
+        cumDiv += cash;
+        if (drip) shares += cash / price;
+
+        const i = base + t;
+        yocArr[i] = shares * dps * 100;   // income this year as % of original cost
+        divArr[i] = cumDiv * 100;
+        valArr[i] = shares * price;
+        pxArr[i]  = price;
+      }
+    }
+  }
+}
+
+/* ------------------------- per-stock statistics ----------------------- */
+const median = (a) => {
+  const b = Float64Array.from(a).sort();
+  const n = b.length, h = n >> 1;
+  return n % 2 ? b[h] : (b[h - 1] + b[h]) / 2;
+};
+const quantile = (sorted, q) => sorted[Math.min(sorted.length - 1, Math.max(0, Math.round(q * (sorted.length - 1))))];
+
+function computeStats(target, horizon) {
+  const out = [];
+  const yrs = new Float64Array(PATHS), yoc = new Float64Array(PATHS);
+  const dvp = new Float64Array(PATHS), pxm = new Float64Array(PATHS), val = new Float64Array(PATHS);
+  for (let s = 0; s < NS; s++) {
+    let hits = 0;
+    for (let p = 0; p < PATHS; p++) {
+      const base = (s * PATHS + p) * STRIDE;
+      let hit = Infinity;
+      for (let t = 1; t <= horizon; t++) {
+        if (yocArr[base + t] >= target) { hit = t; break; }
+      }
+      if (hit === Infinity) {
+        /* look past the horizon so the median stays informative, up to 40 years */
+        for (let t = horizon + 1; t <= MAXT; t++) {
+          if (yocArr[base + t] >= target) { hit = t; break; }
+        }
+      } else { hits++; }
+      yrs[p] = hit;
+      yoc[p] = yocArr[base + horizon];
+      dvp[p] = divArr[base + horizon];
+      pxm[p] = pxArr[base + horizon];
+      val[p] = valArr[base + horizon];
+    }
+    const medYrs = median(yrs);
+    const medVal = median(val), medDiv = median(dvp);
+    /* total return: DRIP compounds inside the value; otherwise add banked cash */
+    const endWealth = DRIP ? medVal : medVal + medDiv / 100;
+    out.push({
+      s,
+      code: STOCKS[s][0], name: STOCKS[s][1], sector: STOCKS[s][2],
+      y0: STOCKS[s][3], g: STOCKS[s][4],
+      years: medYrs,
+      prob: (hits / PATHS) * 100,
+      yoc: median(yoc),
+      divpct: medDiv,
+      pxmult: median(pxm),
+      cagr: (Math.pow(Math.max(endWealth, 1e-6), 1 / horizon) - 1) * 100
+    });
+  }
+  return out;
+}
+
+/* ------------------------------- state -------------------------------- */
+let TARGET = 10, HORIZON = 20, DRIP = false;
+let SECTOR = "All sectors", QUERY = "", SORT = { k: "years", dir: 1 }, SELECTED = 0;
+let STATS = [];
+
+const TARGETS  = [6, 8, 10, 12, 15, 20, 30, 50, 100];
+const HORIZONS = [10, 15, 20, 25, 30, 40];
+
+const $ = (id) => document.getElementById(id);
+
+/* --------------------------- worked example --------------------------- */
+/* The RM10.00 / 40 sen / 7.00% growth case from the concept panel. */
+(function buildExample() {
+  const P0 = 10, D0 = 0.40, G = 0.07;
+  const rows = [0, 5, 10, 15, 20, 25, 30, 48];
+  let html = "";
+  for (const yr of rows) {
+    const dps = D0 * Math.pow(1 + G, yr);
+    const cum = yr === 0 ? 0 : D0 * (Math.pow(1 + G, yr) - 1) / G;
+    const price = P0 * Math.pow(1 + G, yr);
+    html += "<tr><td class='num'>" + yr + "</td><td class='num'>" + fmt(dps) + "</td><td class='num'>"
+      + pct((dps / P0) * 100) + "</td><td class='num'>" + fmt(price) + "</td><td class='num'>" + fmt(cum) + "</td></tr>";
+  }
+  $("exampleTable").querySelector("tbody").innerHTML = html;
+})();
+
+/* ----------------------------- control UI ----------------------------- */
+function buildChips(host, values, current, suffix, onPick) {
+  host.innerHTML = "";
+  values.forEach((v) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "chip";
+    b.textContent = fmt(v) + suffix;
+    b.setAttribute("aria-pressed", String(v === current));
+    b.addEventListener("click", () => onPick(v));
+    host.appendChild(b);
+  });
+}
+
+function buildSectors() {
+  const set = ["All sectors", ...Array.from(new Set(STOCKS.map((r) => r[2]))).sort()];
+  $("sectorSel").innerHTML = set.map((s) => "<option>" + s + "</option>").join("");
+  $("sectorSel").value = SECTOR;
+}
+
+/* ------------------------------ rendering ----------------------------- */
+function visibleRows() {
+  const q = QUERY.trim().toLowerCase();
+  let rows = STATS.filter((r) =>
+    (SECTOR === "All sectors" || r.sector === SECTOR) &&
+    (!q || r.name.toLowerCase().includes(q) || r.code.includes(q))
+  );
+  const k = SORT.k, dir = SORT.dir;
+  rows.sort((a, b) => {
+    if (k === "name" || k === "sector") return dir * String(a[k]).localeCompare(String(b[k]));
+    if (k === "rank") return dir * (a.years - b.years || b.prob - a.prob);
+    const av = a[k], bv = b[k];
+    return dir * ((av === bv) ? 0 : (av < bv ? -1 : 1));
+  });
+  return rows;
+}
+
+function probClass(p) { return p >= 70 ? "good" : p >= 35 ? "warn" : "bad"; }
+
+function renderTable() {
+  const rows = visibleRows();
+  $("rowCount").textContent = rows.length + " of " + NS;
+  $("emptyMsg").hidden = rows.length > 0;
+  const body = $("gridBody");
+  let html = "";
+  rows.forEach((r, i) => {
+    const yearsCell = r.years === Infinity
+      ? "<span class='never'>Never</span>"
+      : "<span class='num'>" + fmt(r.years) + "</span>";
+    html += "<tr class='row" + (r.s === SELECTED ? " sel" : "") + "' data-s='" + r.s + "' tabindex='0'>"
+      + "<td class='l num' style='color:var(--ink-3)'>" + (i + 1) + "</td>"
+      + "<td class='l'><span class='name'>" + r.name + "</span><br><span class='code'>" + r.code + "</span></td>"
+      + "<td class='l sector'>" + r.sector + "</td>"
+      + "<td class='num'>" + pct(r.y0) + "</td>"
+      + "<td class='num'>" + pct(r.g) + "</td>"
+      + "<td>" + yearsCell + "</td>"
+      + "<td><span class='pill " + probClass(r.prob) + "'>" + pct(r.prob) + "</span></td>"
+      + "<td class='num'>" + pct(r.yoc) + "</td>"
+      + "<td class='num'>" + pct(r.divpct) + "</td>"
+      + "<td class='num'>" + fmt(r.pxmult) + "&times;</td>"
+      + "<td class='num'>" + pct(r.cagr) + "</td>"
+      + "</tr>";
+  });
+  body.innerHTML = html;
+  body.querySelectorAll("tr.row").forEach((tr) => {
+    const pick = () => { SELECTED = +tr.dataset.s; renderTable(); renderChart(); };
+    tr.addEventListener("click", pick);
+    tr.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } });
+  });
+  document.querySelectorAll("#grid thead th").forEach((th) => {
+    if (th.dataset.k === SORT.k) th.setAttribute("aria-sort", SORT.dir === 1 ? "ascending" : "descending");
+    else th.removeAttribute("aria-sort");
+  });
+  renderTiles(rows);
+}
+
+function renderTiles(rows) {
+  const reached = rows.filter((r) => r.years !== Infinity && r.years <= HORIZON);
+  $("tileCount").innerHTML = reached.length + " <small>/ " + rows.length + "</small>";
+  $("tileCountNote").textContent = "hit " + pct(TARGET) + " yield on cost within " + HORIZON + " years";
+
+  const fastest = reached.slice().sort((a, b) => a.years - b.years)[0];
+  $("tileFast").textContent = fastest ? fmt(fastest.years) + " yrs" : "—";
+  $("tileFastNote").textContent = fastest ? fastest.name : "no stock reaches this target in time";
+
+  const medYoc = rows.length ? median(rows.map((r) => r.yoc)) : 0;
+  $("tileYoc").textContent = pct(medYoc);
+  $("tileYocNote").textContent = "in year " + HORIZON + ", against " + pct(median(rows.map((r) => r.y0)) || 0) + " at entry";
+
+  const medDiv = rows.length ? median(rows.map((r) => r.divpct)) : 0;
+  $("tileDiv").textContent = pct(medDiv);
+  $("tileDivNote").textContent = "of original capital returned as cash by year " + HORIZON;
+}
+
+/* -------------------------------- chart ------------------------------- */
+/* Median yield-on-cost path with a 10th-90th percentile band and the
+   target line, drawn to one shared y-scale. */
+function renderChart() {
+  const st = STATS.find((r) => r.s === SELECTED) || STATS[0];
+  if (!st) return;
+  const s = st.s;
+
+  const med = [], lo = [], hi = [];
+  const buf = new Float64Array(PATHS);
+  for (let t = 0; t <= HORIZON; t++) {
+    for (let p = 0; p < PATHS; p++) buf[p] = yocArr[(s * PATHS + p) * STRIDE + t];
+    const sorted = Float64Array.from(buf).sort();
+    med.push(quantile(sorted, 0.5));
+    lo.push(quantile(sorted, 0.10));
+    hi.push(quantile(sorted, 0.90));
+  }
+
+  const W = 900, H = 320, m = { t: 18, r: 124, b: 38, l: 56 };
+  const iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const yMax = Math.max(TARGET * 1.18, hi[HORIZON] * 1.08, med[HORIZON] * 1.25, st.y0 * 2);
+  const X = (t) => m.l + (t / HORIZON) * iw;
+  const Y = (v) => m.t + ih - (Math.min(v, yMax) / yMax) * ih;
+
+  /* y ticks: 5 rounded steps across the scale */
+  const step = Math.pow(10, Math.floor(Math.log10(yMax / 4)));
+  const niceStep = [1, 2, 2.5, 5, 10].map((k) => k * step).find((k) => yMax / k <= 5.5) || step * 10;
+  const ticks = [];
+  for (let v = 0; v <= yMax + 1e-9; v += niceStep) ticks.push(v);
+
+  const xTicks = [];
+  const xs = HORIZON <= 10 ? 2 : HORIZON <= 20 ? 5 : 10;
+  for (let t = 0; t <= HORIZON; t += xs) xTicks.push(t);
+  if (xTicks[xTicks.length - 1] !== HORIZON) xTicks.push(HORIZON);
+
+  const path = (arr) => arr.map((v, t) => (t ? "L" : "M") + X(t).toFixed(1) + " " + Y(v).toFixed(1)).join(" ");
+  const band = path(hi) + " " + lo.map((v, t) => "L" + X(HORIZON - t).toFixed(1) + " " + Y(lo[HORIZON - t]).toFixed(1)).join(" ") + " Z";
+
+  let svg = "<svg viewBox='0 0 " + W + " " + H + "' role='img' aria-label='Median yield on cost for "
+    + st.name + " over " + HORIZON + " years, against a " + pct(TARGET) + " target'>";
+
+  /* recessive solid hairline grid */
+  ticks.forEach((v) => {
+    svg += "<line x1='" + m.l + "' y1='" + Y(v).toFixed(1) + "' x2='" + (m.l + iw) + "' y2='" + Y(v).toFixed(1)
+      + "' stroke='var(--line)' stroke-width='1' fill='none'/>";
+    svg += "<text x='" + (m.l - 10) + "' y='" + (Y(v) + 4).toFixed(1) + "' text-anchor='end' font-size='11' "
+      + "fill='var(--ink-3)' font-family='IBM Plex Mono, monospace'>" + fmt(v) + "%</text>";
+  });
+  xTicks.forEach((t) => {
+    svg += "<text x='" + X(t).toFixed(1) + "' y='" + (m.t + ih + 24) + "' text-anchor='middle' font-size='11' "
+      + "fill='var(--ink-3)' font-family='IBM Plex Mono, monospace'>" + t + "</text>";
+  });
+  svg += "<text x='" + (m.l + iw / 2) + "' y='" + (H - 3) + "' text-anchor='middle' font-size='11' fill='var(--ink-3)'>Years held</text>";
+
+  svg += "<path d='" + band + "' fill='var(--s1-fill)' stroke='none'/>";
+  svg += "<path d='" + path(med) + "' fill='none' stroke='var(--s1)' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>";
+
+  /* the target line, directly labelled (light-mode orange needs the relief) */
+  if (TARGET <= yMax) {
+    svg += "<line x1='" + m.l + "' y1='" + Y(TARGET).toFixed(1) + "' x2='" + (m.l + iw) + "' y2='" + Y(TARGET).toFixed(1)
+      + "' stroke='var(--s2)' stroke-width='2' fill='none'/>";
+    svg += "<text x='" + (W - 8) + "' y='" + (Y(TARGET) + 4).toFixed(1) + "' text-anchor='end' font-size='11.5' "
+      + "fill='var(--s2)' font-family='IBM Plex Mono, monospace' font-weight='600'>" + fmt(TARGET) + "% target</text>";
+  }
+
+  /* emphasised endpoint on the median path */
+  const eX = X(HORIZON), eY = Y(med[HORIZON]);
+  svg += "<circle cx='" + eX.toFixed(1) + "' cy='" + eY.toFixed(1) + "' r='4.5' fill='var(--s1)' stroke='var(--surface)' stroke-width='2'/>";
+  const lblY = Math.abs(eY - Y(TARGET)) < 20 ? eY - 18 : eY - 8;
+  svg += "<text x='" + (W - 8) + "' y='" + lblY.toFixed(1) + "' text-anchor='end' font-size='11.5' fill='var(--s1)' "
+    + "font-family='IBM Plex Mono, monospace' font-weight='600'>" + fmt(med[HORIZON]) + "%</text>";
+  svg += "</svg>";
+
+  $("chartHost").innerHTML = svg;
+  $("chartTitle").textContent = st.name + " · " + st.code;
+  $("chartSub").textContent = "Bought on a " + pct(st.y0) + " entry yield, with dividends growing "
+    + pct(st.g) + " a year before cuts" + (DRIP ? " and reinvested into more shares." : " and taken as cash.");
+  $("chartCap").textContent = st.years === Infinity
+    ? "More than half the runs never reach " + pct(TARGET) + " within 40 years. Median yield on cost in year "
+      + HORIZON + " is " + pct(st.yoc) + "."
+    : "Half of the runs reach " + pct(TARGET) + " by year " + fmt(st.years) + ". By year " + HORIZON
+      + " the yield on cost is " + pct(st.yoc) + ", dividends banked come to " + pct(st.divpct)
+      + " of the original outlay, and the share price stands at " + fmt(st.pxmult) + "× your entry.";
+}
+
+/* ---------------------------- recalculation --------------------------- */
+function recalcStats() { STATS = computeStats(TARGET, HORIZON); }
+function refresh() { recalcStats(); renderTable(); renderChart(); }
+
+/* ------------------------------- wiring ------------------------------- */
+function wire() {
+  /* target chips rebuild themselves so the pressed state follows the state object */
+  const pickTarget = (v) => {
+    TARGET = v; $("targetCustom").value = v;
+    buildChips($("targetChips"), TARGETS, TARGET, "%", pickTarget);
+    refresh();
+  };
+  buildChips($("targetChips"), TARGETS, TARGET, "%", pickTarget);
+
+  const pickHorizon = (v) => {
+    HORIZON = v;
+    buildChips($("horizonChips"), HORIZONS, HORIZON, " yrs", pickHorizon);
+    refresh();
+  };
+  buildChips($("horizonChips"), HORIZONS, HORIZON, " yrs", pickHorizon);
+
+  $("targetCustom").addEventListener("input", (e) => {
+    const v = parseFloat(e.target.value);
+    if (!isFinite(v) || v <= 0) return;
+    TARGET = Math.min(v, 500);
+    buildChips($("targetChips"), TARGETS, TARGET, "%", pickTarget);
+    refresh();
+  });
+
+  $("dripBox").addEventListener("change", (e) => {
+    DRIP = e.target.checked;
+    runSimulation(DRIP);
+    refresh();
+  });
+
+  buildSectors();
+  $("sectorSel").addEventListener("change", (e) => { SECTOR = e.target.value; renderTable(); });
+  $("searchBox").addEventListener("input", (e) => { QUERY = e.target.value; renderTable(); });
+
+  document.querySelectorAll("#grid thead th").forEach((th) => {
+    th.addEventListener("click", () => {
+      const k = th.dataset.k;
+      if (SORT.k === k) SORT.dir *= -1;
+      else SORT = { k, dir: (k === "name" || k === "sector" || k === "years" || k === "rank") ? 1 : -1 };
+      renderTable();
+    });
+  });
+
+  /* theme toggle — persisted per browser, wrapped because storage can throw */
+  const btn = $("themeBtn");
+  const syncBtn = () => {
+    const dark = document.documentElement.getAttribute("data-theme") === "dark"
+      || (!document.documentElement.getAttribute("data-theme")
+          && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    btn.textContent = dark ? "Light mode" : "Dark mode";
+  };
+  try {
+    const saved = localStorage.getItem("yoc-theme");
+    if (saved) document.documentElement.setAttribute("data-theme", saved);
+  } catch (e) {}
+  syncBtn();
+  btn.addEventListener("click", () => {
+    const cur = document.documentElement.getAttribute("data-theme")
+      || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    const next = cur === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    try { localStorage.setItem("yoc-theme", next); } catch (e) {}
+    syncBtn();
+    renderChart();
+  });
+}
+
+/* ------------------------------- boot --------------------------------- */
+runSimulation(DRIP);
+wire();
+refresh();
+</script>
