@@ -767,7 +767,7 @@ const CARDS = [
     note: "UNVERIFIED — hsbcamanah.com.my is blocked by the network egress proxy in this environment, so nothing on this card could be re-read in the September 2026 refresh." },
 
   { id: "hsbc-travelone", bank: "HSBC", name: "TravelOne Credit Card", net: "Visa Signature",
-    conv: "hsbc", fee: 0, waiver: { t: "lifetime" }, income: 102000,
+    conv: "hsbc", fee: 300, waiver: { t: "spend", v: 20000 }, income: 102000,
     base: { u: "pts", rate: 1 },
     rules: [
       { cats: ["onlineOs", "overseasRet"], u: "pts", rate: 8, label: "8x on all foreign currency spend" },
@@ -776,7 +776,7 @@ const CARDS = [
     ],
     capTotal: null, fx: 1.00, lounge: { p: "Plaza Premium", v: 6, g: 0, sup: true }, ins: 1000000,
     excl: EX, verified: "2026-09", signup: NOSIGN,
-    note: "Earn rates and the shared lounge pool confirmed on HSBC's own card page; income is RM102,000. The six Plaza Premium visits are a COMBINED pool for the principal and supplementary cardholder, so a partner can use it without a second card. The annual fee and the travel insurance figure are not stated on that page — HSBC puts them in a separate downloadable schedule that could not be reached — so both are carried over unverified." },
+    note: "Earn rates and the shared lounge pool confirmed on HSBC's own card page; income is RM102,000. The six Plaza Premium visits are a COMBINED pool for the principal and supplementary cardholder, so a partner can use it without a second card, and HSBC states no minimum spend for the lounge itself. The card is NOT free for life as this database previously had it: the fee is RM300 with the first year free and later years waived at RM20,000 of annual spend. That figure comes from a comparison site, not from HSBC — their card page only links a separate fee-waiver document and their fees page 404s — so treat RM300 / RM20,000 as indicative and confirm before relying on it. Travel insurance is likewise unverified." },
 
   { id: "hsbc-premier-vi", bank: "HSBC", name: "Premier World Mastercard", net: "World MC",
     conv: "hsbc", fee: 600, waiver: { t: "lifetime" }, income: 0,
